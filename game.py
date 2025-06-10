@@ -229,6 +229,30 @@ def apply_volume():
 
 apply_volume()
 
+# Helper functions to play randomized sounds without immediate repeats
+last_coin_sound = None
+last_swish_sound = None
+
+def play_coin_sound():
+    global last_coin_sound
+    if coin_sounds:
+        choices = coin_sounds
+        if last_coin_sound in choices and len(choices) > 1:
+            choices = [s for s in choices if s is not last_coin_sound]
+        snd = random.choice(choices)
+        snd.play()
+        last_coin_sound = snd
+
+def play_swish_sound():
+    global last_swish_sound
+    if swish_sounds:
+        choices = swish_sounds
+        if last_swish_sound in choices and len(choices) > 1:
+            choices = [s for s in choices if s is not last_swish_sound]
+        snd = random.choice(choices)
+        snd.play()
+        last_swish_sound = snd
+
 WIDTH, HEIGHT = 800, 600
 # Use a dark green background instead of an image
 BACKGROUND_COLOR = (0, 100, 0)
@@ -320,7 +344,7 @@ def pause_menu():
     selected = 0
     options = ["Master", "SFX", "Music"]
     values = [master_volume, sfx_volume, music_volume]
-    track_len = 200
+    track_len = 240
 
     while True:
         for event in pygame.event.get():
@@ -338,8 +362,12 @@ def pause_menu():
                     selected = (selected + 1) % 3
                 if event.key == pygame.K_LEFT:
                     values[selected] = max(0, values[selected] - 5)
+                    master_volume, sfx_volume, music_volume = values
+                    apply_volume()
                 if event.key == pygame.K_RIGHT:
                     values[selected] = min(100, values[selected] + 5)
+                    master_volume, sfx_volume, music_volume = values
+                    apply_volume()
 
         screen.fill(BACKGROUND_COLOR)
         title = font.render("Paused", True, (255, 255, 255))
@@ -347,8 +375,8 @@ def pause_menu():
 
         for i, (name, val) in enumerate(zip(options, values)):
             label = font.render(name, True, (255, 255, 255))
-            y = HEIGHT // 2 - 60 + i * 60
-            screen.blit(label, (WIDTH // 2 - track_len // 2 - 60, y - 10))
+            y = HEIGHT // 2 - 80 + i * 80
+            screen.blit(label, (WIDTH // 2 - track_len // 2 - 80, y - 15))
             track = pygame.Rect(WIDTH // 2 - track_len // 2, y, track_len, 8)
             pygame.draw.rect(screen, (80, 80, 80), track)
             handle_x = track.x + int((val / 100) * track.width)
@@ -401,23 +429,19 @@ def run_game():
                 elif event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
                     ammo -= 1
-                    if swish_sounds:
-                        random.choice(swish_sounds).play()
+                    play_swish_sound()
                 elif event.key == pygame.K_RIGHT and ammo > 0:
                     projectiles.append([player_x, player_y, projectile_speed, 0, 0])
                     ammo -= 1
-                    if swish_sounds:
-                        random.choice(swish_sounds).play()
+                    play_swish_sound()
                 elif event.key == pygame.K_UP and ammo > 0:
                     projectiles.append([player_x, player_y, 0, -projectile_speed, 0])
                     ammo -= 1
-                    if swish_sounds:
-                        random.choice(swish_sounds).play()
+                    play_swish_sound()
                 elif event.key == pygame.K_DOWN and ammo > 0:
                     projectiles.append([player_x, player_y, 0, projectile_speed, 0])
                     ammo -= 1
-                    if swish_sounds:
-                        random.choice(swish_sounds).play()
+                    play_swish_sound()
 
         keys = pygame.key.get_pressed()
         moving = False
@@ -513,8 +537,7 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
                 score += 1
-                if coin_sounds:
-                    random.choice(coin_sounds).play()
+                play_coin_sound()
                 coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
                 coin_anim_index = 0
                 coin_anim_timer = 0
@@ -527,8 +550,7 @@ def run_game():
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
-            if coin_sounds:
-                random.choice(coin_sounds).play()
+            play_coin_sound()
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
             coin_anim_index = 0
             coin_anim_timer = 0
@@ -543,11 +565,11 @@ def run_game():
 
         screen.fill(BACKGROUND_COLOR)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        screen.blit(score_text, (10, 10))
+        screen.blit(score_text, (20, 10))
         # ammo indicator
-        screen.blit(shuriken_img, shuriken_img.get_rect(center=(10, 50)))
+        screen.blit(shuriken_img, (20, 40))
         ammo_text = font.render(str(ammo), True, (255, 255, 255))
-        screen.blit(ammo_text, (25, 40))
+        screen.blit(ammo_text, (20 + shuriken_img.get_width() + 5, 45))
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         screen.blit(enemy.image, enemy.rect)

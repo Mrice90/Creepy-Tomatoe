@@ -18,6 +18,12 @@ with `R` or quit with `Q`.
 Binary image and audio files aren't stored in this repository. When the game
 first runs it generates simple CC0 placeholder graphics and sound effects inside
 the `assets/` directory. You can drop in higher quality CC0 replacements.
+Multiple sound variations are supported:
+
+- `hit1.wav`&ndash;`hit5.wav` for enemy hits or when the player is hurt
+- `coin1.wav`&ndash;`coin9.wav` for collecting coins
+- `swish1.wav`&ndash;`swish13.wav` for projectile throws
+- `komiku-it.wav` as looping background music
 
 Suggested sources:
 

@@ -53,9 +53,25 @@ def ensure_assets():
             pygame.draw.rect(s, (255, 255, 255), (6, 10, 20, 6))
         generate_image(ninja_path, draw_ninja)
 
-    oni_path = os.path.join(images, "oni.png")
-    if not os.path.exists(oni_path):
-        generate_image(oni_path, lambda s: s.fill((200, 0, 0)))
+
+    # Generate simple zombie sheets if they are missing
+    zombie_sheet_dir = os.path.join(ASSET_DIR, "Zombies", "Zombies")
+    os.makedirs(zombie_sheet_dir, exist_ok=True)
+    for i in range(1, 7):
+        sheet_path = os.path.join(zombie_sheet_dir, f"{i}ZombieSpriteSheet.png")
+        if not os.path.exists(sheet_path):
+            surface = pygame.Surface((96, 128), pygame.SRCALPHA)
+            cell_w, cell_h = 32, 32
+            for row in range(4):
+                for col in range(3):
+                    rect = pygame.Rect(col * cell_w, row * cell_h, cell_w, cell_h)
+                    color = (
+                        (50 * i) % 256,
+                        (80 * row) % 256,
+                        (120 * col) % 256,
+                    )
+                    pygame.draw.rect(surface, color, rect)
+            pygame.image.save(surface, sheet_path)
 
     coin_path = os.path.join(images, "coin.png")
     if not os.path.exists(coin_path):

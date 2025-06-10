@@ -5,7 +5,7 @@ GPT assisted coding journey
 ## Simple Pygame Demo
 
 `game.py` contains a simple Pygame demo. Use `W`, `A`, `S` and `D` to move the ninja.
-Shoot projectiles with the arrow keys (as long as ammo is available). Avoid the oni enemies and collect the coins.
+Shoot projectiles with the arrow keys (as long as ammo is available). Avoid the zombie enemies and collect the coins.
 Both enemies and coins can enter from any edge of the screen and travel horizontally or vertically. The
 player starts in the center and earns a point for each coin collected. Projectiles
 also award points when they destroy enemies or coins. Ammo pickups occasionally spawn and increase

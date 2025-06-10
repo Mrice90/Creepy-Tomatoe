@@ -15,4 +15,10 @@ with `R` or quit with `Q`.
 python3 game.py
 ```
 
+Install dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
 Pygame is required to run the demo.

@@ -74,36 +74,10 @@ def ensure_assets():
         generate_image(kunai_path, draw_kunai)
 
     if pygame.mixer.get_init():
-        def existing(prefix):
-            for root, _, files in os.walk(sounds):
-                for name in files:
-                    low = name.lower()
-                    if low.startswith(prefix) and low.split(".")[-1] in ("wav", "ogg", "mp3"):
-                        return True
-            return False
-
-        if not existing("coin"):
-            for i in range(1, 10):
-                coin_sound_path = os.path.join(sounds, f"coin{i}.wav")
-                if not os.path.exists(coin_sound_path):
-                    generate_sound(coin_sound_path, 880 + i * 10, 0.1)
-
-        if not existing("swish"):
-            for i in range(1, 14):
-                swish_sound_path = os.path.join(sounds, f"swish{i}.wav")
-                if not os.path.exists(swish_sound_path):
-                    generate_sound(swish_sound_path, 660 + i * 5, 0.1)
-
-        if not existing("hit"):
-            for i in range(1, 6):
-                hit_sound_path = os.path.join(sounds, f"hit{i}.wav")
-                if not os.path.exists(hit_sound_path):
-                    generate_sound(hit_sound_path, 220 + i * 20, 0.1)
-
-        if not existing("komiku"):
-            bg_sound_path = os.path.join(sounds, "komiku-it.wav")
-            if not os.path.exists(bg_sound_path):
-                generate_sound(bg_sound_path, 110, 1.0)
+        # Custom sound effects are now included with the project so we no longer
+        # generate placeholder sounds. Any required files should be placed under
+        # ``assets/sounds`` beforehand.
+        pass
 
 
 class Zombie(pygame.sprite.Sprite):

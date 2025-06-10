@@ -157,7 +157,19 @@ zombie_sheet_paths = [
     os.path.join(ASSET_DIR, "Zombies", "Zombies", f"{i}ZombieSpriteSheet.png")
     for i in range(1, 7)
 ]
-coin_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "coin.png"))
+
+# Coin rotation sprite sheet (6 frames horizontally)
+coin_sheet = pygame.image.load(os.path.join(ASSET_DIR, "coin_rot_anim.png")).convert_alpha()
+coin_frame_size = coin_sheet.get_height()
+coin_frames = []
+for i in range(coin_sheet.get_width() // coin_frame_size):
+    frame = pygame.Surface((coin_frame_size, coin_frame_size), pygame.SRCALPHA)
+    frame.blit(
+        coin_sheet,
+        (0, 0),
+        pygame.Rect(i * coin_frame_size, 0, coin_frame_size, coin_frame_size),
+    )
+    coin_frames.append(frame)
 shuriken_img = pygame.image.load(
     os.path.join(ASSET_DIR, "Block Ninja", "shuriken.PNG")
 )
@@ -188,7 +200,7 @@ enemy_frame_w = sample_sheet.get_width() // 3
 enemy_frame_h = sample_sheet.get_height() // 4
 enemy_size = max(enemy_frame_w, enemy_frame_h)
 enemy_speed = 3
-coin_size = coin_img.get_width()
+coin_size = coin_frame_size
 coin_speed = 4
 
 # new color for ammo pickup/projectile ui
@@ -198,7 +210,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Ninja vs Zombies")
 player_idle_img = player_idle_img.convert_alpha()
 player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
-coin_img = coin_img.convert_alpha()
 shuriken_img = shuriken_img.convert_alpha()
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
@@ -276,6 +287,8 @@ def run_game():
     enemy_spawn_count = 1
 
     coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+    coin_anim_index = 0
+    coin_anim_timer = 0
 
     ammo_x, ammo_y = None, None
 
@@ -362,6 +375,13 @@ def run_game():
 
         coin_x += coin_dx
         coin_y += coin_dy
+        coin_anim_timer += dt
+        if coin_anim_timer >= 0.1:
+            coin_anim_timer = 0
+            if coin_dx > 0 or coin_dy < 0:
+                coin_anim_index = (coin_anim_index + 1) % len(coin_frames)
+            else:
+                coin_anim_index = (coin_anim_index - 1) % len(coin_frames)
         if (
             coin_x < -coin_size
             or coin_x > WIDTH
@@ -369,6 +389,8 @@ def run_game():
             or coin_y > HEIGHT
         ):
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+            coin_anim_index = 0
+            coin_anim_timer = 0
 
         # Update projectiles
         for p in projectiles[:]:
@@ -401,6 +423,8 @@ def run_game():
                 if coin_sound:
                     coin_sound.play()
                 coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+                coin_anim_index = 0
+                coin_anim_timer = 0
                 projectiles.remove(p)
 
         if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
@@ -411,6 +435,8 @@ def run_game():
             if coin_sound:
                 coin_sound.play()
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+            coin_anim_index = 0
+            coin_anim_timer = 0
 
         if ammo_x is not None and check_collision(
             player_x, player_y,
@@ -430,7 +456,7 @@ def run_game():
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         screen.blit(enemy.image, enemy.rect)
-        screen.blit(coin_img, (coin_x, coin_y))
+        screen.blit(coin_frames[coin_anim_index], (coin_x, coin_y))
         if ammo_x is not None:
             screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
         for p in projectiles:

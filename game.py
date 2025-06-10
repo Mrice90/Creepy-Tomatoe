@@ -90,20 +90,24 @@ class Zombie(pygame.sprite.Sprite):
     def __init__(self, spritesheet_path):
         super().__init__()
         self.sprite_sheet = pygame.image.load(spritesheet_path).convert_alpha()
-        self.frame_width = 32
-        self.frame_height = 32
+        # Determine frame dimensions from the sheet itself (3 columns x 4 rows)
+        sheet_w, sheet_h = self.sprite_sheet.get_size()
         self.frames_per_direction = 3
+        self.frame_width = sheet_w // self.frames_per_direction
+        self.frame_height = sheet_h // 4
+        # Sprite sheet rows are ordered: down, right, up, left
         self.directions = {
             "down": 0,
-            "left": 1,
-            "right": 2,
-            "up": 3,
+            "right": 1,
+            "up": 2,
+            "left": 3,
         }
 
         self.direction = "down"
         self.current_frame = 0
         self.animation_timer = 0
-        self.animation_speed = 0.15  # seconds per frame
+        # Slow the animation slightly for clearer movement
+        self.animation_speed = 0.2  # seconds per frame
 
         self.image = self.get_frame()
         self.rect = self.image.get_rect()
@@ -148,7 +152,7 @@ player_walk_imgs = [
     pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk c.PNG")),
     pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk d.PNG")),
 ]
-# Zombie sprite sheets (3 columns by 4 rows of 32x32 frames)
+# Zombie sprite sheets (3 columns x 4 rows)
 zombie_sheet_paths = [
     os.path.join(ASSET_DIR, "Zombies", "Zombies", f"{i}ZombieSpriteSheet.png")
     for i in range(1, 7)
@@ -178,8 +182,11 @@ player_speed = 5
 projectile_radius = shuriken_img.get_width() // 2
 projectile_speed = 10
 
-# Each zombie frame is 32x32
-enemy_size = 32
+# Determine enemy sprite size from a sample zombie sheet
+sample_sheet = pygame.image.load(zombie_sheet_paths[0])
+enemy_frame_w = sample_sheet.get_width() // 3
+enemy_frame_h = sample_sheet.get_height() // 4
+enemy_size = max(enemy_frame_w, enemy_frame_h)
 enemy_speed = 3
 coin_size = coin_img.get_width()
 coin_speed = 4

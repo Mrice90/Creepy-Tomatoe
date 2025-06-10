@@ -14,6 +14,9 @@ COIN_COLOR = (255, 255, 0)
 player_radius = 20
 player_speed = 5
 
+projectile_radius = 5
+projectile_speed = 10
+
 enemy_size = 40
 enemy_speed = 3
 coin_size = 20
@@ -24,9 +27,9 @@ pygame.display.set_caption("Circle vs Square")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 
-def check_collision(px, py, ex, ey, size):
-    circle_rect = pygame.Rect(px - player_radius, py - player_radius,
-                              player_radius * 2, player_radius * 2)
+def check_collision(px, py, ex, ey, size, radius):
+    circle_rect = pygame.Rect(px - radius, py - radius,
+                              radius * 2, radius * 2)
     square_rect = pygame.Rect(ex, ey, size, size)
     return circle_rect.colliderect(square_rect)
 
@@ -83,6 +86,8 @@ def run_game():
 
     coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
+    projectiles = []
+
     score = 0
 
     running = True
@@ -91,15 +96,24 @@ def run_game():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    projectiles.append([player_x, player_y, -projectile_speed, 0])
+                elif event.key == pygame.K_RIGHT:
+                    projectiles.append([player_x, player_y, projectile_speed, 0])
+                elif event.key == pygame.K_UP:
+                    projectiles.append([player_x, player_y, 0, -projectile_speed])
+                elif event.key == pygame.K_DOWN:
+                    projectiles.append([player_x, player_y, 0, projectile_speed])
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
+        if keys[pygame.K_a]:
             player_x -= player_speed
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_d]:
             player_x += player_speed
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_w]:
             player_y -= player_speed
-        if keys[pygame.K_DOWN]:
+        if keys[pygame.K_s]:
             player_y += player_speed
 
         player_x = max(player_radius, min(WIDTH - player_radius, player_x))
@@ -125,10 +139,32 @@ def run_game():
         ):
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
-        if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size):
+        # Update projectiles
+        for p in projectiles[:]:
+            p[0] += p[2]
+            p[1] += p[3]
+            if (
+                p[0] < -projectile_radius
+                or p[0] > WIDTH + projectile_radius
+                or p[1] < -projectile_radius
+                or p[1] > HEIGHT + projectile_radius
+            ):
+                projectiles.remove(p)
+                continue
+            if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
+                score += 1
+                enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
+                projectiles.remove(p)
+                continue
+            if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
+                score += 1
+                coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+                projectiles.remove(p)
+
+        if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
             running = False
 
-        if check_collision(player_x, player_y, coin_x, coin_y, coin_size):
+        if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
@@ -138,6 +174,8 @@ def run_game():
         pygame.draw.circle(screen, PLAYER_COLOR, (player_x, player_y), player_radius)
         pygame.draw.rect(screen, ENEMY_COLOR, (enemy_x, enemy_y, enemy_size, enemy_size))
         pygame.draw.rect(screen, COIN_COLOR, (coin_x, coin_y, coin_size, coin_size))
+        for p in projectiles:
+            pygame.draw.circle(screen, (255, 255, 255), (int(p[0]), int(p[1])), projectile_radius)
 
         pygame.display.flip()
         clock.tick(60)

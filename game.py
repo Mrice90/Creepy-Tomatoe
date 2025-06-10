@@ -1,32 +1,130 @@
 import pygame
 import random
 import sys
+import os
+import math
+import wave
+import struct
 
 # Initialize pygame
 pygame.init()
+try:
+    pygame.mixer.init()
+except pygame.error:
+    print("Warning: audio disabled")
+
+ASSET_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
+
+def ensure_directories():
+    os.makedirs(os.path.join(ASSET_DIR, "images"), exist_ok=True)
+    os.makedirs(os.path.join(ASSET_DIR, "sounds"), exist_ok=True)
+
+
+def generate_image(path, draw_func):
+    surface = pygame.Surface((32, 32), pygame.SRCALPHA)
+    draw_func(surface)
+    pygame.image.save(surface, path)
+
+
+def generate_sound(path, frequency, duration):
+    sample_rate = 44100
+    amplitude = 32767
+    frames = []
+    for i in range(int(duration * sample_rate)):
+        value = int(amplitude * math.sin(2 * math.pi * frequency * i / sample_rate))
+        frames.append(struct.pack("<h", value))
+    with wave.open(path, "w") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        wav.writeframes(b"".join(frames))
+
+
+def ensure_assets():
+    ensure_directories()
+    images = os.path.join(ASSET_DIR, "images")
+    sounds = os.path.join(ASSET_DIR, "sounds")
+
+    ninja_path = os.path.join(images, "ninja.png")
+    if not os.path.exists(ninja_path):
+        def draw_ninja(s):
+            s.fill((0, 0, 0))
+            pygame.draw.rect(s, (255, 255, 255), (6, 10, 20, 6))
+        generate_image(ninja_path, draw_ninja)
+
+    oni_path = os.path.join(images, "oni.png")
+    if not os.path.exists(oni_path):
+        generate_image(oni_path, lambda s: s.fill((200, 0, 0)))
+
+    coin_path = os.path.join(images, "coin.png")
+    if not os.path.exists(coin_path):
+        def draw_coin(s):
+            pygame.draw.circle(s, (255, 215, 0), (16, 16), 12)
+        generate_image(coin_path, draw_coin)
+
+    kunai_path = os.path.join(images, "kunai.png")
+    if not os.path.exists(kunai_path):
+        def draw_kunai(s):
+            pygame.draw.polygon(s, (192, 192, 192), [(16, 0), (28, 20), (16, 31), (4, 20)])
+        generate_image(kunai_path, draw_kunai)
+
+    if pygame.mixer.get_init():
+        coin_sound_path = os.path.join(sounds, "coin.wav")
+        if not os.path.exists(coin_sound_path):
+            generate_sound(coin_sound_path, 880, 0.1)
+        throw_sound_path = os.path.join(sounds, "throw.wav")
+        if not os.path.exists(throw_sound_path):
+            generate_sound(throw_sound_path, 660, 0.1)
+        hit_sound_path = os.path.join(sounds, "hit.wav")
+        if not os.path.exists(hit_sound_path):
+            generate_sound(hit_sound_path, 220, 0.1)
+        bg_sound_path = os.path.join(sounds, "background.wav")
+        if not os.path.exists(bg_sound_path):
+            generate_sound(bg_sound_path, 110, 1.0)
+
+
+ensure_assets()
+
+# Load images
+player_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "ninja.png"))
+enemy_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "oni.png"))
+coin_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "coin.png"))
+kunai_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "kunai.png"))
+
+# Load sounds
+if pygame.mixer.get_init():
+    coin_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "coin.wav"))
+    throw_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "throw.wav"))
+    hit_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "hit.wav"))
+    pygame.mixer.music.load(os.path.join(ASSET_DIR, "sounds", "background.wav"))
+    pygame.mixer.music.play(-1)
+else:
+    coin_sound = throw_sound = hit_sound = None
 
 WIDTH, HEIGHT = 800, 600
 BACKGROUND_COLOR = (0, 0, 0)
-PLAYER_COLOR = (0, 0, 255)
-ENEMY_COLOR = (255, 0, 0)
-COIN_COLOR = (255, 255, 0)
 
-player_radius = 20
+player_radius = player_img.get_width() // 2
 player_speed = 5
 
-projectile_radius = 5
+projectile_radius = kunai_img.get_width() // 2
 projectile_speed = 10
 
-enemy_size = 40
+enemy_size = enemy_img.get_width()
 enemy_speed = 3
-coin_size = 20
+coin_size = coin_img.get_width()
 coin_speed = 4
 
 # new color for ammo pickup/projectile ui
 AMMO_COLOR = (255, 255, 255)
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Circle vs Square")
+pygame.display.set_caption("Ninja vs Oni")
+player_img = player_img.convert_alpha()
+enemy_img = enemy_img.convert_alpha()
+coin_img = coin_img.convert_alpha()
+kunai_img = kunai_img.convert_alpha()
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 
@@ -114,15 +212,23 @@ def run_game():
                 if event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0])
                     ammo -= 1
+                    if throw_sound:
+                        throw_sound.play()
                 elif event.key == pygame.K_RIGHT and ammo > 0:
                     projectiles.append([player_x, player_y, projectile_speed, 0])
                     ammo -= 1
+                    if throw_sound:
+                        throw_sound.play()
                 elif event.key == pygame.K_UP and ammo > 0:
                     projectiles.append([player_x, player_y, 0, -projectile_speed])
                     ammo -= 1
+                    if throw_sound:
+                        throw_sound.play()
                 elif event.key == pygame.K_DOWN and ammo > 0:
                     projectiles.append([player_x, player_y, 0, projectile_speed])
                     ammo -= 1
+                    if throw_sound:
+                        throw_sound.play()
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
@@ -174,6 +280,8 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
                 score += 1
+                if hit_sound:
+                    hit_sound.play()
                 enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
                 enemy_spawn_count += 1
                 if enemy_spawn_count % 4 == 0 and ammo_x is None:
@@ -182,6 +290,8 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
                 score += 1
+                if coin_sound:
+                    coin_sound.play()
                 coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
                 projectiles.remove(p)
 
@@ -190,6 +300,8 @@ def run_game():
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
+            if coin_sound:
+                coin_sound.play()
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
         if ammo_x is not None and check_collision(
@@ -208,13 +320,14 @@ def run_game():
         ammo_text = font.render(str(ammo), True, (255, 255, 255))
         screen.blit(ammo_text, (25, 40))
 
-        pygame.draw.circle(screen, PLAYER_COLOR, (player_x, player_y), player_radius)
-        pygame.draw.rect(screen, ENEMY_COLOR, (enemy_x, enemy_y, enemy_size, enemy_size))
-        pygame.draw.rect(screen, COIN_COLOR, (coin_x, coin_y, coin_size, coin_size))
+        screen.blit(player_img, player_img.get_rect(center=(player_x, player_y)))
+        screen.blit(enemy_img, (enemy_x, enemy_y))
+        screen.blit(coin_img, (coin_x, coin_y))
         if ammo_x is not None:
             pygame.draw.circle(screen, AMMO_COLOR, (ammo_x, ammo_y), projectile_radius)
         for p in projectiles:
-            pygame.draw.circle(screen, AMMO_COLOR, (int(p[0]), int(p[1])), projectile_radius)
+            rect = kunai_img.get_rect(center=(int(p[0]), int(p[1])))
+            screen.blit(kunai_img, rect)
 
         pygame.display.flip()
         clock.tick(60)

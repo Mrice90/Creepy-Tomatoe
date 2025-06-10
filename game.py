@@ -1,6 +1,7 @@
 import pygame
 import random
 import sys
+import os
 
 # Initialize pygame
 pygame.init()
@@ -18,6 +19,8 @@ enemy_size = 40
 enemy_speed = 3
 coin_size = 20
 coin_speed = 4
+
+SCORES_FILE = "scores.txt"
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Circle vs Square")
@@ -73,6 +76,26 @@ def spawn_coin():
         y = random.randint(0, HEIGHT - coin_size)
         dx, dy = coin_speed, 0
     return x, y, dx, dy
+
+
+def load_scores():
+    """Return a list of saved scores sorted descending."""
+    if not os.path.exists(SCORES_FILE):
+        return []
+    with open(SCORES_FILE, "r") as f:
+        scores = [int(line.strip()) for line in f if line.strip().isdigit()]
+    return sorted(scores, reverse=True)
+
+
+def save_score(score):
+    """Save score to file and return updated top scores list."""
+    scores = load_scores()
+    scores.append(score)
+    scores = sorted(scores, reverse=True)[:5]
+    with open(SCORES_FILE, "w") as f:
+        for s in scores:
+            f.write(f"{s}\n")
+    return scores
 
 
 def run_game():
@@ -149,6 +172,8 @@ def game_over_screen(score):
     over_font = pygame.font.SysFont(None, 48)
     info_font = pygame.font.SysFont(None, 36)
 
+    top_scores = save_score(score)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -167,7 +192,13 @@ def game_over_screen(score):
 
         screen.blit(over_text, over_text.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
         screen.blit(score_text, score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
-        screen.blit(prompt_text, prompt_text.get_rect(center=(WIDTH // 2, HEIGHT * 2 // 3)))
+        leaderboard_y = HEIGHT * 2 // 3
+        for idx, s in enumerate(top_scores, start=1):
+            entry = info_font.render(f"{idx}. {s}", True, (255, 255, 255))
+            screen.blit(entry, entry.get_rect(center=(WIDTH // 2, leaderboard_y)))
+            leaderboard_y += 30
+
+        screen.blit(prompt_text, prompt_text.get_rect(center=(WIDTH // 2, HEIGHT - 40)))
 
         pygame.display.flip()
         clock.tick(60)

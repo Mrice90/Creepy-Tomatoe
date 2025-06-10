@@ -74,16 +74,19 @@ def ensure_assets():
         generate_image(kunai_path, draw_kunai)
 
     if pygame.mixer.get_init():
-        coin_sound_path = os.path.join(sounds, "coin.wav")
-        if not os.path.exists(coin_sound_path):
-            generate_sound(coin_sound_path, 880, 0.1)
-        throw_sound_path = os.path.join(sounds, "throw.wav")
-        if not os.path.exists(throw_sound_path):
-            generate_sound(throw_sound_path, 660, 0.1)
-        hit_sound_path = os.path.join(sounds, "hit.wav")
-        if not os.path.exists(hit_sound_path):
-            generate_sound(hit_sound_path, 220, 0.1)
-        bg_sound_path = os.path.join(sounds, "background.wav")
+        for i in range(1, 10):
+            coin_sound_path = os.path.join(sounds, f"coin{i}.wav")
+            if not os.path.exists(coin_sound_path):
+                generate_sound(coin_sound_path, 880 + i * 10, 0.1)
+        for i in range(1, 14):
+            swish_sound_path = os.path.join(sounds, f"swish{i}.wav")
+            if not os.path.exists(swish_sound_path):
+                generate_sound(swish_sound_path, 660 + i * 5, 0.1)
+        for i in range(1, 6):
+            hit_sound_path = os.path.join(sounds, f"hit{i}.wav")
+            if not os.path.exists(hit_sound_path):
+                generate_sound(hit_sound_path, 220 + i * 20, 0.1)
+        bg_sound_path = os.path.join(sounds, "komiku-it.wav")
         if not os.path.exists(bg_sound_path):
             generate_sound(bg_sound_path, 110, 1.0)
 
@@ -180,13 +183,22 @@ shuriken_img = pygame.image.load(
 
 # Load sounds
 if pygame.mixer.get_init():
-    coin_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "coin.wav"))
-    throw_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "throw.wav"))
-    hit_sound = pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", "hit.wav"))
-    pygame.mixer.music.load(os.path.join(ASSET_DIR, "sounds", "background.wav"))
+    coin_sounds = [
+        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"coin{i}.wav"))
+        for i in range(1, 10)
+    ]
+    swish_sounds = [
+        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"swish{i}.wav"))
+        for i in range(1, 14)
+    ]
+    hit_sounds = [
+        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"hit{i}.wav"))
+        for i in range(1, 6)
+    ]
+    pygame.mixer.music.load(os.path.join(ASSET_DIR, "sounds", "komiku-it.wav"))
     pygame.mixer.music.play(-1)
 else:
-    coin_sound = throw_sound = hit_sound = None
+    coin_sounds = swish_sounds = hit_sounds = []
 
 WIDTH, HEIGHT = 800, 600
 # Use a dark green background instead of an image
@@ -309,23 +321,23 @@ def run_game():
                 if event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
                     ammo -= 1
-                    if throw_sound:
-                        throw_sound.play()
+                    if swish_sounds:
+                        random.choice(swish_sounds).play()
                 elif event.key == pygame.K_RIGHT and ammo > 0:
                     projectiles.append([player_x, player_y, projectile_speed, 0, 0])
                     ammo -= 1
-                    if throw_sound:
-                        throw_sound.play()
+                    if swish_sounds:
+                        random.choice(swish_sounds).play()
                 elif event.key == pygame.K_UP and ammo > 0:
                     projectiles.append([player_x, player_y, 0, -projectile_speed, 0])
                     ammo -= 1
-                    if throw_sound:
-                        throw_sound.play()
+                    if swish_sounds:
+                        random.choice(swish_sounds).play()
                 elif event.key == pygame.K_DOWN and ammo > 0:
                     projectiles.append([player_x, player_y, 0, projectile_speed, 0])
                     ammo -= 1
-                    if throw_sound:
-                        throw_sound.play()
+                    if swish_sounds:
+                        random.choice(swish_sounds).play()
 
         keys = pygame.key.get_pressed()
         moving = False
@@ -408,8 +420,8 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
                 score += 1
-                if hit_sound:
-                    hit_sound.play()
+                if hit_sounds:
+                    random.choice(hit_sounds).play()
                 enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
                 enemy = Zombie(random.choice(zombie_sheet_paths))
                 enemy.set_direction(enemy_dir)
@@ -421,20 +433,22 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
                 score += 1
-                if coin_sound:
-                    coin_sound.play()
+                if coin_sounds:
+                    random.choice(coin_sounds).play()
                 coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
                 coin_anim_index = 0
                 coin_anim_timer = 0
                 projectiles.remove(p)
 
         if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
+            if hit_sounds:
+                random.choice(hit_sounds).play()
             running = False
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
-            if coin_sound:
-                coin_sound.play()
+            if coin_sounds:
+                random.choice(coin_sounds).play()
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
             coin_anim_index = 0
             coin_anim_timer = 0

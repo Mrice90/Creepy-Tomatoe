@@ -13,7 +13,11 @@ try:
 except pygame.error:
     print("Warning: audio disabled")
 
+WIDTH, HEIGHT = 800, 600
 ASSET_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Ninja vs Zombies")
 
 
 def ensure_directories():
@@ -205,9 +209,6 @@ coin_speed = 4
 
 # new color for ammo pickup/projectile ui
 AMMO_COLOR = (255, 255, 255)
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Ninja vs Zombies")
 player_idle_img = player_idle_img.convert_alpha()
 player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
 shuriken_img = shuriken_img.convert_alpha()

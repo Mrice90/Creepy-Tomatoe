@@ -31,15 +31,57 @@ def check_collision(px, py, ex, ey, size):
     return circle_rect.colliderect(square_rect)
 
 
+def spawn_enemy():
+    """Spawn an enemy from a random edge moving inwards."""
+    direction = random.choice(["down", "up", "left", "right"])
+    if direction == "down":
+        x = random.randint(0, WIDTH - enemy_size)
+        y = -enemy_size
+        dx, dy = 0, enemy_speed
+    elif direction == "up":
+        x = random.randint(0, WIDTH - enemy_size)
+        y = HEIGHT
+        dx, dy = 0, -enemy_speed
+    elif direction == "left":
+        x = WIDTH
+        y = random.randint(0, HEIGHT - enemy_size)
+        dx, dy = -enemy_speed, 0
+    else:  # right
+        x = -enemy_size
+        y = random.randint(0, HEIGHT - enemy_size)
+        dx, dy = enemy_speed, 0
+    return x, y, dx, dy
+
+
+def spawn_coin():
+    """Spawn a coin from a random edge moving across the screen."""
+    direction = random.choice(["down", "up", "left", "right"])
+    if direction == "down":
+        x = random.randint(0, WIDTH - coin_size)
+        y = -coin_size
+        dx, dy = 0, coin_speed
+    elif direction == "up":
+        x = random.randint(0, WIDTH - coin_size)
+        y = HEIGHT
+        dx, dy = 0, -coin_speed
+    elif direction == "left":
+        x = WIDTH
+        y = random.randint(0, HEIGHT - coin_size)
+        dx, dy = -coin_speed, 0
+    else:  # right
+        x = -coin_size
+        y = random.randint(0, HEIGHT - coin_size)
+        dx, dy = coin_speed, 0
+    return x, y, dx, dy
+
+
 def run_game():
     player_x = WIDTH // 2
-    player_y = HEIGHT - player_radius - 10
+    player_y = HEIGHT // 2
 
-    enemy_x = random.randint(0, WIDTH - enemy_size)
-    enemy_y = 0
+    enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
 
-    coin_x = -coin_size
-    coin_y = random.randint(0, HEIGHT - coin_size)
+    coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
     score = 0
 
@@ -63,23 +105,32 @@ def run_game():
         player_x = max(player_radius, min(WIDTH - player_radius, player_x))
         player_y = max(player_radius, min(HEIGHT - player_radius, player_y))
 
-        enemy_y += enemy_speed
-        if enemy_y > HEIGHT:
-            enemy_x = random.randint(0, WIDTH - enemy_size)
-            enemy_y = 0
+        enemy_x += enemy_dx
+        enemy_y += enemy_dy
+        if (
+            enemy_x < -enemy_size
+            or enemy_x > WIDTH
+            or enemy_y < -enemy_size
+            or enemy_y > HEIGHT
+        ):
+            enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
 
-        coin_x += coin_speed
-        if coin_x > WIDTH:
-            coin_x = -coin_size
-            coin_y = random.randint(0, HEIGHT - coin_size)
+        coin_x += coin_dx
+        coin_y += coin_dy
+        if (
+            coin_x < -coin_size
+            or coin_x > WIDTH
+            or coin_y < -coin_size
+            or coin_y > HEIGHT
+        ):
+            coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
         if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size):
             running = False
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size):
             score += 1
-            coin_x = -coin_size
-            coin_y = random.randint(0, HEIGHT - coin_size)
+            coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
         screen.fill(BACKGROUND_COLOR)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))

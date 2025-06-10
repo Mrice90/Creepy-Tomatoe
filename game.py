@@ -183,20 +183,29 @@ shuriken_img = pygame.image.load(
 
 # Load sounds
 if pygame.mixer.get_init():
-    coin_sounds = [
-        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"coin{i}.wav"))
-        for i in range(1, 10)
-    ]
-    swish_sounds = [
-        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"swish{i}.wav"))
-        for i in range(1, 14)
-    ]
-    hit_sounds = [
-        pygame.mixer.Sound(os.path.join(ASSET_DIR, "sounds", f"hit{i}.wav"))
-        for i in range(1, 6)
-    ]
-    pygame.mixer.music.load(os.path.join(ASSET_DIR, "sounds", "komiku-it.wav"))
-    pygame.mixer.music.play(-1)
+    sound_dir = os.path.join(ASSET_DIR, "sounds")
+
+    def load_sound_variations(prefix):
+        variations = []
+        for name in sorted(os.listdir(sound_dir)):
+            if name.startswith(prefix) and name.lower().endswith(".wav"):
+                try:
+                    variations.append(pygame.mixer.Sound(os.path.join(sound_dir, name)))
+                except pygame.error:
+                    pass
+        return variations
+
+    coin_sounds = load_sound_variations("coin")
+    swish_sounds = load_sound_variations("swish")
+    hit_sounds = load_sound_variations("hit")
+
+    bg_path = os.path.join(sound_dir, "komiku-it.wav")
+    if os.path.exists(bg_path):
+        try:
+            pygame.mixer.music.load(bg_path)
+            pygame.mixer.music.play(-1)
+        except pygame.error:
+            pass
 else:
     coin_sounds = swish_sounds = hit_sounds = []
 

@@ -95,17 +95,19 @@ class Zombie(pygame.sprite.Sprite):
         self.frames_per_direction = 3
         self.frame_width = sheet_w // self.frames_per_direction
         self.frame_height = sheet_h // 4
+        # Sprite sheet rows are ordered: down, right, up, left
         self.directions = {
             "down": 0,
-            "left": 1,
-            "right": 2,
-            "up": 3,
+            "right": 1,
+            "up": 2,
+            "left": 3,
         }
 
         self.direction = "down"
         self.current_frame = 0
         self.animation_timer = 0
-        self.animation_speed = 0.15  # seconds per frame
+        # Slightly slower animation for smoother movement
+        self.animation_speed = 0.2  # seconds per frame
 
         self.image = self.get_frame()
         self.rect = self.image.get_rect()

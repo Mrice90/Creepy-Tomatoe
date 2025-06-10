@@ -114,7 +114,7 @@ else:
     coin_sound = throw_sound = hit_sound = None
 
 WIDTH, HEIGHT = 800, 600
-BACKGROUND_COLOR = (0, 0, 0)
+BACKGROUND_COLOR = (34, 139, 34)  # forest green
 
 player_radius = player_idle_img.get_width() // 2
 player_speed = 5

@@ -197,11 +197,10 @@ if pygame.mixer.get_init():
     swish_sounds = load_sound_variations("swish")
     hit_sounds = load_sound_variations("hit")
 
-    bg_path = None
-    for path in find_sound_files("komiku"):
-        bg_path = path
-        break
-    if bg_path:
+    bg_tracks = find_sound_files("komiku")
+    if bg_tracks:
+        # Randomly choose one background track to loop
+        bg_path = random.choice(bg_tracks)
         try:
             pygame.mixer.music.load(bg_path)
             pygame.mixer.music.play(-1)
@@ -345,6 +344,7 @@ def pause_menu():
     options = ["Master", "SFX", "Music"]
     values = [master_volume, sfx_volume, music_volume]
     track_len = 240
+    label_offset = 100  # space between labels and sliders
 
     while True:
         for event in pygame.event.get():
@@ -376,7 +376,7 @@ def pause_menu():
         for i, (name, val) in enumerate(zip(options, values)):
             label = font.render(name, True, (255, 255, 255))
             y = HEIGHT // 2 - 80 + i * 80
-            screen.blit(label, (WIDTH // 2 - track_len // 2 - 80, y - 15))
+            screen.blit(label, (WIDTH // 2 - track_len // 2 - label_offset, y - 15))
             track = pygame.Rect(WIDTH // 2 - track_len // 2, y, track_len, 8)
             pygame.draw.rect(screen, (80, 80, 80), track)
             handle_x = track.x + int((val / 100) * track.width)

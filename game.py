@@ -115,10 +115,6 @@ else:
 
 WIDTH, HEIGHT = 800, 600
 BACKGROUND_COLOR = (0, 0, 0)
-background_img = pygame.image.load(
-    os.path.join(ASSET_DIR, "ForestBackground.png")
-).convert()
-background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
 player_radius = player_idle_img.get_width() // 2
 player_speed = 5
@@ -136,6 +132,10 @@ AMMO_COLOR = (255, 255, 255)
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Ninja vs Oni")
+background_img = pygame.image.load(
+    os.path.join(ASSET_DIR, "ForestBackground.png")
+).convert()
+background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 player_idle_img = player_idle_img.convert_alpha()
 player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
 enemy_img = enemy_img.convert_alpha()

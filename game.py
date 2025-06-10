@@ -84,6 +84,57 @@ def ensure_assets():
             generate_sound(bg_sound_path, 110, 1.0)
 
 
+class Zombie(pygame.sprite.Sprite):
+    """Animated zombie enemy using 3x4 sprite sheets."""
+
+    def __init__(self, spritesheet_path):
+        super().__init__()
+        self.sprite_sheet = pygame.image.load(spritesheet_path).convert_alpha()
+        self.frame_width = 32
+        self.frame_height = 32
+        self.frames_per_direction = 3
+        self.directions = {
+            "down": 0,
+            "left": 1,
+            "right": 2,
+            "up": 3,
+        }
+
+        self.direction = "down"
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.15  # seconds per frame
+
+        self.image = self.get_frame()
+        self.rect = self.image.get_rect()
+
+    def get_frame(self):
+        row = self.directions[self.direction]
+        col = self.current_frame % self.frames_per_direction
+        x = col * self.frame_width
+        y = row * self.frame_height
+        frame = pygame.Surface((self.frame_width, self.frame_height), pygame.SRCALPHA)
+        frame.blit(
+            self.sprite_sheet,
+            (0, 0),
+            pygame.Rect(x, y, self.frame_width, self.frame_height),
+        )
+        return frame
+
+    def update(self, dt):
+        self.animation_timer += dt
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % self.frames_per_direction
+            self.image = self.get_frame()
+
+    def set_direction(self, new_direction):
+        if new_direction in self.directions and new_direction != self.direction:
+            self.direction = new_direction
+            self.current_frame = 0
+            self.image = self.get_frame()
+
+
 ensure_assets()
 
 # Load images
@@ -97,23 +148,11 @@ player_walk_imgs = [
     pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk c.PNG")),
     pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk d.PNG")),
 ]
-# Load zombie sprite sheets for enemies
-zombie_frames_list = []
-zombie_dir = os.path.join(ASSET_DIR, "Zombies", "Zombies")
-for i in range(1, 7):
-    sheet = pygame.image.load(
-        os.path.join(zombie_dir, f"{i}ZombieSpriteSheet.png")
-    )
-    frame_w = sheet.get_width() // 4
-    frame_h = sheet.get_height() // 3
-    frames = []
-    for row in range(3):
-        for col in range(4):
-            rect = pygame.Rect(col * frame_w, row * frame_h, frame_w, frame_h)
-            frames.append(sheet.subsurface(rect))
-    zombie_frames_list.append(frames)
-
-enemy_img = zombie_frames_list[0][0]
+# Zombie sprite sheets (3 columns by 4 rows of 32x32 frames)
+zombie_sheet_paths = [
+    os.path.join(ASSET_DIR, "Zombies", "Zombies", f"{i}ZombieSpriteSheet.png")
+    for i in range(1, 7)
+]
 coin_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "coin.png"))
 shuriken_img = pygame.image.load(
     os.path.join(ASSET_DIR, "Block Ninja", "shuriken.PNG")
@@ -139,7 +178,8 @@ player_speed = 5
 projectile_radius = shuriken_img.get_width() // 2
 projectile_speed = 10
 
-enemy_size = max(enemy_img.get_width(), enemy_img.get_height())
+# Each zombie frame is 32x32
+enemy_size = 32
 enemy_speed = 3
 coin_size = coin_img.get_width()
 coin_speed = 4
@@ -151,10 +191,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Ninja vs Zombies")
 player_idle_img = player_idle_img.convert_alpha()
 player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
-zombie_frames_list = [
-    [frame.convert_alpha() for frame in frames]
-    for frames in zombie_frames_list
-]
 coin_img = coin_img.convert_alpha()
 shuriken_img = shuriken_img.convert_alpha()
 clock = pygame.time.Clock()
@@ -186,7 +222,7 @@ def spawn_enemy():
         x = -enemy_size
         y = random.randint(0, HEIGHT - enemy_size)
         dx, dy = enemy_speed, 0
-    return x, y, dx, dy
+    return x, y, dx, dy, direction
 
 
 def spawn_coin():
@@ -226,10 +262,10 @@ def run_game():
     player_anim_timer = 0
     current_img = player_idle_img
 
-    enemy_frames = random.choice(zombie_frames_list)
-    enemy_anim_index = 0
-    enemy_anim_timer = 0
-    enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
+    enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
+    enemy = Zombie(random.choice(zombie_sheet_paths))
+    enemy.set_direction(enemy_dir)
+    enemy.rect.topleft = (enemy_x, enemy_y)
     enemy_spawn_count = 1
 
     coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
@@ -243,6 +279,7 @@ def run_game():
 
     running = True
     while running:
+        dt = clock.tick(60) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -297,23 +334,21 @@ def run_game():
         player_x = max(player_radius, min(WIDTH - player_radius, player_x))
         player_y = max(player_radius, min(HEIGHT - player_radius, player_y))
 
-        enemy_anim_timer += 1
-        if enemy_anim_timer >= 10:
-            enemy_anim_timer = 0
-            enemy_anim_index = (enemy_anim_index + 1) % len(enemy_frames)
+        enemy.update(dt)
 
         enemy_x += enemy_dx
         enemy_y += enemy_dy
+        enemy.rect.topleft = (enemy_x, enemy_y)
         if (
             enemy_x < -enemy_size
             or enemy_x > WIDTH
             or enemy_y < -enemy_size
             or enemy_y > HEIGHT
         ):
-            enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
-            enemy_frames = random.choice(zombie_frames_list)
-            enemy_anim_index = 0
-            enemy_anim_timer = 0
+            enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
+            enemy = Zombie(random.choice(zombie_sheet_paths))
+            enemy.set_direction(enemy_dir)
+            enemy.rect.topleft = (enemy_x, enemy_y)
             enemy_spawn_count += 1
             if enemy_spawn_count % 4 == 0 and ammo_x is None:
                 ammo_x, ammo_y = spawn_ammo()
@@ -345,10 +380,10 @@ def run_game():
                 score += 1
                 if hit_sound:
                     hit_sound.play()
-                enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
-                enemy_frames = random.choice(zombie_frames_list)
-                enemy_anim_index = 0
-                enemy_anim_timer = 0
+                enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
+                enemy = Zombie(random.choice(zombie_sheet_paths))
+                enemy.set_direction(enemy_dir)
+                enemy.rect.topleft = (enemy_x, enemy_y)
                 enemy_spawn_count += 1
                 if enemy_spawn_count % 4 == 0 and ammo_x is None:
                     ammo_x, ammo_y = spawn_ammo()
@@ -387,7 +422,7 @@ def run_game():
         screen.blit(ammo_text, (25, 40))
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
-        screen.blit(enemy_frames[enemy_anim_index], (enemy_x, enemy_y))
+        screen.blit(enemy.image, enemy.rect)
         screen.blit(coin_img, (coin_x, coin_y))
         if ammo_x is not None:
             screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
@@ -397,7 +432,6 @@ def run_game():
             screen.blit(rotated, rect)
 
         pygame.display.flip()
-        clock.tick(60)
 
     return score
 

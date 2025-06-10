@@ -74,21 +74,36 @@ def ensure_assets():
         generate_image(kunai_path, draw_kunai)
 
     if pygame.mixer.get_init():
-        for i in range(1, 10):
-            coin_sound_path = os.path.join(sounds, f"coin{i}.wav")
-            if not os.path.exists(coin_sound_path):
-                generate_sound(coin_sound_path, 880 + i * 10, 0.1)
-        for i in range(1, 14):
-            swish_sound_path = os.path.join(sounds, f"swish{i}.wav")
-            if not os.path.exists(swish_sound_path):
-                generate_sound(swish_sound_path, 660 + i * 5, 0.1)
-        for i in range(1, 6):
-            hit_sound_path = os.path.join(sounds, f"hit{i}.wav")
-            if not os.path.exists(hit_sound_path):
-                generate_sound(hit_sound_path, 220 + i * 20, 0.1)
-        bg_sound_path = os.path.join(sounds, "komiku-it.wav")
-        if not os.path.exists(bg_sound_path):
-            generate_sound(bg_sound_path, 110, 1.0)
+        def existing(prefix):
+            for root, _, files in os.walk(sounds):
+                for name in files:
+                    low = name.lower()
+                    if low.startswith(prefix) and low.split(".")[-1] in ("wav", "ogg", "mp3"):
+                        return True
+            return False
+
+        if not existing("coin"):
+            for i in range(1, 10):
+                coin_sound_path = os.path.join(sounds, f"coin{i}.wav")
+                if not os.path.exists(coin_sound_path):
+                    generate_sound(coin_sound_path, 880 + i * 10, 0.1)
+
+        if not existing("swish"):
+            for i in range(1, 14):
+                swish_sound_path = os.path.join(sounds, f"swish{i}.wav")
+                if not os.path.exists(swish_sound_path):
+                    generate_sound(swish_sound_path, 660 + i * 5, 0.1)
+
+        if not existing("hit"):
+            for i in range(1, 6):
+                hit_sound_path = os.path.join(sounds, f"hit{i}.wav")
+                if not os.path.exists(hit_sound_path):
+                    generate_sound(hit_sound_path, 220 + i * 20, 0.1)
+
+        if not existing("komiku"):
+            bg_sound_path = os.path.join(sounds, "komiku-it.wav")
+            if not os.path.exists(bg_sound_path):
+                generate_sound(bg_sound_path, 110, 1.0)
 
 
 class Zombie(pygame.sprite.Sprite):
@@ -185,22 +200,33 @@ shuriken_img = pygame.image.load(
 if pygame.mixer.get_init():
     sound_dir = os.path.join(ASSET_DIR, "sounds")
 
+    def find_sound_files(prefix):
+        paths = []
+        for root, _, files in os.walk(sound_dir):
+            for name in sorted(files):
+                low = name.lower()
+                if low.startswith(prefix) and low.split(".")[-1] in ("wav", "ogg", "mp3"):
+                    paths.append(os.path.join(root, name))
+        return paths
+
     def load_sound_variations(prefix):
         variations = []
-        for name in sorted(os.listdir(sound_dir)):
-            if name.startswith(prefix) and name.lower().endswith(".wav"):
-                try:
-                    variations.append(pygame.mixer.Sound(os.path.join(sound_dir, name)))
-                except pygame.error:
-                    pass
+        for path in find_sound_files(prefix):
+            try:
+                variations.append(pygame.mixer.Sound(path))
+            except pygame.error:
+                pass
         return variations
 
     coin_sounds = load_sound_variations("coin")
     swish_sounds = load_sound_variations("swish")
     hit_sounds = load_sound_variations("hit")
 
-    bg_path = os.path.join(sound_dir, "komiku-it.wav")
-    if os.path.exists(bg_path):
+    bg_path = None
+    for path in find_sound_files("komiku"):
+        bg_path = path
+        break
+    if bg_path:
         try:
             pygame.mixer.music.load(bg_path)
             pygame.mixer.music.play(-1)

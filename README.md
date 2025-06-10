@@ -18,13 +18,13 @@ with `R` or quit with `Q`.
 Binary image and audio files aren't stored in this repository. When the game
 first runs it generates simple CC0 placeholder graphics and sound effects inside
 the `assets/` directory. You can drop in higher quality CC0 replacements.
-Place any number of `*.wav` files in `assets/sounds/` and the game will load
-them automatically:
+Place any number of `*.wav`, `*.ogg` or `*.mp3` files anywhere inside
+`assets/sounds/` and the game will load them automatically:
 
 - files starting with `hit` play when zombies or the player are struck
 - files starting with `coin` play when coins are collected
 - files starting with `swish` play when throwing projectiles
-- `komiku-it.wav` loops as background music if present
+- any file starting with `komiku` will loop as background music if present
 
 Suggested sources:
 

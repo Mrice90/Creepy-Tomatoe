@@ -22,6 +22,9 @@ enemy_speed = 3
 coin_size = 20
 coin_speed = 4
 
+# new color for ammo pickup/projectile ui
+AMMO_COLOR = (255, 255, 255)
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Circle vs Square")
 clock = pygame.time.Clock()
@@ -78,17 +81,28 @@ def spawn_coin():
     return x, y, dx, dy
 
 
+def spawn_ammo():
+    """Spawn a stationary ammo pickup inside the screen."""
+    x = random.randint(projectile_radius, WIDTH - projectile_radius)
+    y = random.randint(projectile_radius, HEIGHT - projectile_radius)
+    return x, y
+
+
 def run_game():
     player_x = WIDTH // 2
     player_y = HEIGHT // 2
 
     enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
+    enemy_spawn_count = 1
 
     coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+
+    ammo_x, ammo_y = None, None
 
     projectiles = []
 
     score = 0
+    ammo = 5
 
     running = True
     while running:
@@ -97,14 +111,18 @@ def run_game():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0])
-                elif event.key == pygame.K_RIGHT:
+                    ammo -= 1
+                elif event.key == pygame.K_RIGHT and ammo > 0:
                     projectiles.append([player_x, player_y, projectile_speed, 0])
-                elif event.key == pygame.K_UP:
+                    ammo -= 1
+                elif event.key == pygame.K_UP and ammo > 0:
                     projectiles.append([player_x, player_y, 0, -projectile_speed])
-                elif event.key == pygame.K_DOWN:
+                    ammo -= 1
+                elif event.key == pygame.K_DOWN and ammo > 0:
                     projectiles.append([player_x, player_y, 0, projectile_speed])
+                    ammo -= 1
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
@@ -128,6 +146,9 @@ def run_game():
             or enemy_y > HEIGHT
         ):
             enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
+            enemy_spawn_count += 1
+            if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                ammo_x, ammo_y = spawn_ammo()
 
         coin_x += coin_dx
         coin_y += coin_dy
@@ -154,6 +175,9 @@ def run_game():
             if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
                 score += 1
                 enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
+                enemy_spawn_count += 1
+                if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                    ammo_x, ammo_y = spawn_ammo()
                 projectiles.remove(p)
                 continue
             if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
@@ -168,14 +192,29 @@ def run_game():
             score += 1
             coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
 
+        if ammo_x is not None and check_collision(
+            player_x, player_y,
+            ammo_x - projectile_radius, ammo_y - projectile_radius,
+            projectile_radius * 2, player_radius
+        ):
+            ammo += 1
+            ammo_x, ammo_y = None, None
+
         screen.fill(BACKGROUND_COLOR)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
+        # ammo indicator
+        pygame.draw.circle(screen, AMMO_COLOR, (10, 50), projectile_radius)
+        ammo_text = font.render(str(ammo), True, (255, 255, 255))
+        screen.blit(ammo_text, (25, 40))
+
         pygame.draw.circle(screen, PLAYER_COLOR, (player_x, player_y), player_radius)
         pygame.draw.rect(screen, ENEMY_COLOR, (enemy_x, enemy_y, enemy_size, enemy_size))
         pygame.draw.rect(screen, COIN_COLOR, (coin_x, coin_y, coin_size, coin_size))
+        if ammo_x is not None:
+            pygame.draw.circle(screen, AMMO_COLOR, (ammo_x, ammo_y), projectile_radius)
         for p in projectiles:
-            pygame.draw.circle(screen, (255, 255, 255), (int(p[0]), int(p[1])), projectile_radius)
+            pygame.draw.circle(screen, AMMO_COLOR, (int(p[0]), int(p[1])), projectile_radius)
 
         pygame.display.flip()
         clock.tick(60)

@@ -18,6 +18,9 @@ with `R` or quit with `Q`.
 Binary image and audio files aren't stored in this repository. When the game
 first runs it generates simple CC0 placeholder graphics and sound effects inside
 the `assets/` directory. You can drop in higher quality CC0 replacements.
+Place any `*.wav` files beginning with `hit`, `coin` or `swish` in
+`assets/sounds/` and the game will randomly choose between them. The
+background track `komiku-it.wav` will loop automatically.
 
 Suggested sources:
 

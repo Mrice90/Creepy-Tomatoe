@@ -10,6 +10,7 @@ import struct
 pygame.init()
 try:
     pygame.mixer.init()
+    pygame.mixer.set_num_channels(32)
 except pygame.error:
     print("Warning: audio disabled")
 
@@ -209,6 +210,25 @@ if pygame.mixer.get_init():
 else:
     coin_sounds = swish_sounds = hit_sounds = []
 
+# ---------------------------------------------------------------------------
+# Volume configuration helpers
+# ---------------------------------------------------------------------------
+master_volume = 100
+sfx_volume = 100
+music_volume = 100
+
+def apply_volume():
+    """Apply current volume settings to all loaded sounds."""
+    global master_volume, sfx_volume, music_volume
+    total_sfx = (master_volume / 100) * (sfx_volume / 100)
+    total_music = (master_volume / 100) * (music_volume / 100)
+    if pygame.mixer.get_init():
+        for snd in coin_sounds + swish_sounds + hit_sounds:
+            snd.set_volume(total_sfx)
+        pygame.mixer.music.set_volume(total_music)
+
+apply_volume()
+
 WIDTH, HEIGHT = 800, 600
 # Use a dark green background instead of an image
 BACKGROUND_COLOR = (0, 100, 0)
@@ -294,7 +314,56 @@ def spawn_ammo():
     return x, y
 
 
+def pause_menu():
+    """Display a simple pause/options menu and adjust audio settings."""
+    global master_volume, sfx_volume, music_volume
+    selected = 0
+    options = ["Master", "SFX", "Music"]
+    values = [master_volume, sfx_volume, music_volume]
+    track_len = 200
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    master_volume, sfx_volume, music_volume = values
+                    apply_volume()
+                    return
+                if event.key == pygame.K_UP:
+                    selected = (selected - 1) % 3
+                if event.key == pygame.K_DOWN:
+                    selected = (selected + 1) % 3
+                if event.key == pygame.K_LEFT:
+                    values[selected] = max(0, values[selected] - 5)
+                if event.key == pygame.K_RIGHT:
+                    values[selected] = min(100, values[selected] + 5)
+
+        screen.fill(BACKGROUND_COLOR)
+        title = font.render("Paused", True, (255, 255, 255))
+        screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 4)))
+
+        for i, (name, val) in enumerate(zip(options, values)):
+            label = font.render(name, True, (255, 255, 255))
+            y = HEIGHT // 2 - 60 + i * 60
+            screen.blit(label, (WIDTH // 2 - track_len // 2 - 60, y - 10))
+            track = pygame.Rect(WIDTH // 2 - track_len // 2, y, track_len, 8)
+            pygame.draw.rect(screen, (80, 80, 80), track)
+            handle_x = track.x + int((val / 100) * track.width)
+            color = (200, 0, 0) if i == selected else (200, 200, 200)
+            pygame.draw.circle(screen, color, (handle_x, track.centery), 10)
+
+        prompt = font.render("Space to Resume", True, (255, 255, 255))
+        screen.blit(prompt, prompt.get_rect(center=(WIDTH // 2, HEIGHT * 3 // 4)))
+
+        pygame.display.flip()
+        clock.tick(60)
+
+
 def run_game():
+    global master_volume, sfx_volume, music_volume
     player_x = WIDTH // 2
     player_y = HEIGHT // 2
 
@@ -327,7 +396,9 @@ def run_game():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and ammo > 0:
+                if event.key == pygame.K_SPACE:
+                    pause_menu()
+                elif event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
                     ammo -= 1
                     if swish_sounds:

@@ -115,6 +115,10 @@ else:
 
 WIDTH, HEIGHT = 800, 600
 BACKGROUND_COLOR = (0, 0, 0)
+background_img = pygame.image.load(
+    os.path.join(ASSET_DIR, "ForestBackground.png")
+).convert()
+background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
 player_radius = player_idle_img.get_width() // 2
 player_speed = 5
@@ -344,7 +348,7 @@ def run_game():
             ammo += 1
             ammo_x, ammo_y = None, None
 
-        screen.fill(BACKGROUND_COLOR)
+        screen.blit(background_img, (0, 0))
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
         # ammo indicator

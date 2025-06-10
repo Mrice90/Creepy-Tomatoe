@@ -30,3 +30,9 @@ python3 game.py
 ```
 
 Pygame is required to run the demo.
+
+### Credits
+
+- **Zombie RPG sprites** by Curt (March 20, 2013) from [OpenGameArt](https://opengameart.org)
+- **Block Ninja 2D sprites** by Korba™ (May 28, 2014) from [OpenGameArt](https://opengameart.org)
+

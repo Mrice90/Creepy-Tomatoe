@@ -87,10 +87,21 @@ def ensure_assets():
 ensure_assets()
 
 # Load images
-player_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "ninja.png"))
+# Load Block Ninja sprites
+player_idle_img = pygame.image.load(
+    os.path.join(ASSET_DIR, "Block Ninja", "idle.PNG")
+)
+player_walk_imgs = [
+    pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk a.PNG")),
+    pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk b.PNG")),
+    pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk c.PNG")),
+    pygame.image.load(os.path.join(ASSET_DIR, "Block Ninja", "walk d.PNG")),
+]
 enemy_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "oni.png"))
 coin_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "coin.png"))
-kunai_img = pygame.image.load(os.path.join(ASSET_DIR, "images", "kunai.png"))
+shuriken_img = pygame.image.load(
+    os.path.join(ASSET_DIR, "Block Ninja", "shuriken.PNG")
+)
 
 # Load sounds
 if pygame.mixer.get_init():
@@ -105,10 +116,10 @@ else:
 WIDTH, HEIGHT = 800, 600
 BACKGROUND_COLOR = (0, 0, 0)
 
-player_radius = player_img.get_width() // 2
+player_radius = player_idle_img.get_width() // 2
 player_speed = 5
 
-projectile_radius = kunai_img.get_width() // 2
+projectile_radius = shuriken_img.get_width() // 2
 projectile_speed = 10
 
 enemy_size = enemy_img.get_width()
@@ -121,10 +132,11 @@ AMMO_COLOR = (255, 255, 255)
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Ninja vs Oni")
-player_img = player_img.convert_alpha()
+player_idle_img = player_idle_img.convert_alpha()
+player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
 enemy_img = enemy_img.convert_alpha()
 coin_img = coin_img.convert_alpha()
-kunai_img = kunai_img.convert_alpha()
+shuriken_img = shuriken_img.convert_alpha()
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 
@@ -190,6 +202,10 @@ def run_game():
     player_x = WIDTH // 2
     player_y = HEIGHT // 2
 
+    player_anim_index = 0
+    player_anim_timer = 0
+    current_img = player_idle_img
+
     enemy_x, enemy_y, enemy_dx, enemy_dy = spawn_enemy()
     enemy_spawn_count = 1
 
@@ -210,35 +226,50 @@ def run_game():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT and ammo > 0:
-                    projectiles.append([player_x, player_y, -projectile_speed, 0])
+                    projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
                     ammo -= 1
                     if throw_sound:
                         throw_sound.play()
                 elif event.key == pygame.K_RIGHT and ammo > 0:
-                    projectiles.append([player_x, player_y, projectile_speed, 0])
+                    projectiles.append([player_x, player_y, projectile_speed, 0, 0])
                     ammo -= 1
                     if throw_sound:
                         throw_sound.play()
                 elif event.key == pygame.K_UP and ammo > 0:
-                    projectiles.append([player_x, player_y, 0, -projectile_speed])
+                    projectiles.append([player_x, player_y, 0, -projectile_speed, 0])
                     ammo -= 1
                     if throw_sound:
                         throw_sound.play()
                 elif event.key == pygame.K_DOWN and ammo > 0:
-                    projectiles.append([player_x, player_y, 0, projectile_speed])
+                    projectiles.append([player_x, player_y, 0, projectile_speed, 0])
                     ammo -= 1
                     if throw_sound:
                         throw_sound.play()
 
         keys = pygame.key.get_pressed()
+        moving = False
         if keys[pygame.K_a]:
             player_x -= player_speed
+            moving = True
         if keys[pygame.K_d]:
             player_x += player_speed
+            moving = True
         if keys[pygame.K_w]:
             player_y -= player_speed
+            moving = True
         if keys[pygame.K_s]:
             player_y += player_speed
+            moving = True
+
+        if moving:
+            player_anim_timer += 1
+            if player_anim_timer >= 10:
+                player_anim_timer = 0
+                player_anim_index = (player_anim_index + 1) % len(player_walk_imgs)
+            current_img = player_walk_imgs[player_anim_index]
+        else:
+            player_anim_timer = 0
+            current_img = player_idle_img
 
         player_x = max(player_radius, min(WIDTH - player_radius, player_x))
         player_y = max(player_radius, min(HEIGHT - player_radius, player_y))
@@ -270,6 +301,7 @@ def run_game():
         for p in projectiles[:]:
             p[0] += p[2]
             p[1] += p[3]
+            p[4] = (p[4] + 15) % 360
             if (
                 p[0] < -projectile_radius
                 or p[0] > WIDTH + projectile_radius
@@ -316,18 +348,19 @@ def run_game():
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         screen.blit(score_text, (10, 10))
         # ammo indicator
-        pygame.draw.circle(screen, AMMO_COLOR, (10, 50), projectile_radius)
+        screen.blit(shuriken_img, shuriken_img.get_rect(center=(10, 50)))
         ammo_text = font.render(str(ammo), True, (255, 255, 255))
         screen.blit(ammo_text, (25, 40))
 
-        screen.blit(player_img, player_img.get_rect(center=(player_x, player_y)))
+        screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         screen.blit(enemy_img, (enemy_x, enemy_y))
         screen.blit(coin_img, (coin_x, coin_y))
         if ammo_x is not None:
-            pygame.draw.circle(screen, AMMO_COLOR, (ammo_x, ammo_y), projectile_radius)
+            screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
         for p in projectiles:
-            rect = kunai_img.get_rect(center=(int(p[0]), int(p[1])))
-            screen.blit(kunai_img, rect)
+            rotated = pygame.transform.rotate(shuriken_img, p[4])
+            rect = rotated.get_rect(center=(int(p[0]), int(p[1])))
+            screen.blit(rotated, rect)
 
         pygame.display.flip()
         clock.tick(60)

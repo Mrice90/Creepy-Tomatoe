@@ -610,7 +610,9 @@ def pause_menu():
 
 
 def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, coin_delay):
-    global master_volume, sfx_volume, music_volume, score, lives, next_life_score
+    global master_volume, sfx_volume, music_volume
+    global score, lives, next_life_score
+    global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE
     if pygame.mixer.get_init() and not pygame.mixer.music.get_busy():
         start_music()
 

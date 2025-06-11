@@ -391,8 +391,8 @@ if os.path.isdir(DECORATION_DIR):
             fw = sheet.get_width() // 4
             fh = sheet.get_height() // 6
             target = (
-                player_idle_img.get_width() // 2,
-                player_idle_img.get_height() // 2,
+                min(DECORATION_MAX_SIZE, player_idle_img.get_width()),
+                min(DECORATION_MAX_SIZE, player_idle_img.get_height()),
             )
             for i in range(4):
                 frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
@@ -814,9 +814,10 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             y = random.randint(0, max(0, HEIGHT - img.get_height()))
             decorations.append(Decoration(img, (x, y)))
     if FLOWER_FRAMES:
-        x = random.randint(0, max(0, WIDTH - FLOWER_FRAMES[0].get_width()))
-        y = random.randint(0, max(0, HEIGHT - FLOWER_FRAMES[0].get_height()))
-        decorations.append(AnimatedDecoration(FLOWER_FRAMES, (x, y)))
+        for _ in range(random.randint(3, 7)):
+            x = random.randint(0, max(0, WIDTH - FLOWER_FRAMES[0].get_width()))
+            y = random.randint(0, max(0, HEIGHT - FLOWER_FRAMES[0].get_height()))
+            decorations.append(AnimatedDecoration(FLOWER_FRAMES, (x, y)))
 
     elapsed = 0
     running = True

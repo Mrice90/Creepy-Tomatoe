@@ -397,13 +397,37 @@ if os.path.isdir(DECORATION_DIR):
         )
         if sheet.get_width() == fw * 2 and sheet.get_height() == fh * 2:
             frames = []
+            bboxes = []
             for j in range(2):
                 for i in range(2):
                     frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
                     frame.blit(sheet, (0, 0), pygame.Rect(i * fw, j * fh, fw, fh))
-                    frame = pygame.transform.smoothscale(frame, target)
+                    mask = pygame.mask.from_surface(frame)
+                    rects = mask.get_bounding_rects()
+                    if rects:
+                        minx = min(r.x for r in rects)
+                        miny = min(r.y for r in rects)
+                        maxx = max(r.x + r.w for r in rects)
+                        maxy = max(r.y + r.h for r in rects)
+                        bbox = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
+                    else:
+                        bbox = pygame.Rect(0, 0, fw, fh)
                     frames.append(frame)
-            DECORATION_ANIMATIONS.append(frames)
+                    bboxes.append(bbox)
+
+            minx = min(r.x for r in bboxes)
+            miny = min(r.y for r in bboxes)
+            maxx = max(r.x + r.w for r in bboxes)
+            maxy = max(r.y + r.h for r in bboxes)
+            union = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
+
+            aligned = []
+            for frame in frames:
+                surf = pygame.Surface(union.size, pygame.SRCALPHA)
+                surf.blit(frame, (-union.x, -union.y))
+                surf = pygame.transform.smoothscale(surf, target)
+                aligned.append(surf)
+            DECORATION_ANIMATIONS.append(aligned)
         else:
             img = sheet
             if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:

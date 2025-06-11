@@ -28,6 +28,10 @@ HEIGHT = SCREEN_HEIGHT
 LEFT_PANEL_WIDTH = max(200, (SCREEN_WIDTH - GAME_WIDTH) // 2)
 RIGHT_PANEL_WIDTH = SCREEN_WIDTH - GAME_WIDTH - LEFT_PANEL_WIDTH
 
+# Drop-down sizing for the shop panel
+SHOP_DD_HEIGHT = 24
+SHOP_OPTION_HEIGHT = 24
+
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Ninja vs Zombies")
 
@@ -374,6 +378,11 @@ BACKGROUND_TILES = sorted(
     ]
 )
 
+
+def background_label(index):
+    """Return a simplified label for the background index."""
+    return f"Grass {index + 1}"
+
 _tile_size = 128
 selected_background = 0
 unlocked_backgrounds = {0}
@@ -428,6 +437,7 @@ player_walk_imgs = [img.convert_alpha() for img in player_walk_imgs]
 shuriken_img = shuriken_img.convert_alpha()
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
+shop_font = pygame.font.SysFont(None, 28)
 
 # Global game state
 score = 0
@@ -518,28 +528,38 @@ def draw_shop(dropdown_open):
     """Render the shop panel and return list of option rects."""
     panel = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH, 0, RIGHT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (40, 40, 40), panel)
-    pygame.draw.rect(screen, (200, 200, 200), panel, 2)
+    draw_gradient_border(screen, panel, 8)
 
     title = font.render("Shop", True, (255, 255, 255))
     screen.blit(title, (panel.x + 10, 10))
 
-    dd_rect = pygame.Rect(panel.x + 10, 60, panel.width - 20, 30)
+    dd_rect = pygame.Rect(panel.x + 10, 60, panel.width - 20, SHOP_DD_HEIGHT)
     pygame.draw.rect(screen, (80, 80, 80), dd_rect)
-    current_name = os.path.basename(BACKGROUND_TILES[selected_background])
-    txt = font.render(current_name, True, (255, 255, 255))
+    current_name = background_label(selected_background)
+    txt = shop_font.render(current_name, True, (255, 255, 255))
     screen.blit(txt, txt.get_rect(center=dd_rect.center))
 
     option_rects = []
     if dropdown_open:
-        for i, path in enumerate(BACKGROUND_TILES):
-            rect = pygame.Rect(dd_rect.x, dd_rect.bottom + i * 30, dd_rect.width, 30)
-            color = (60, 60, 60)
-            pygame.draw.rect(screen, color, rect)
-            name = os.path.basename(path)
-            label = name
+        for i, _ in enumerate(BACKGROUND_TILES):
+            rect = pygame.Rect(
+                dd_rect.x,
+                dd_rect.bottom + i * SHOP_OPTION_HEIGHT,
+                dd_rect.width,
+                SHOP_OPTION_HEIGHT,
+            )
+            pygame.draw.rect(screen, (60, 60, 60), rect)
+            label = background_label(i)
             if i not in unlocked_backgrounds:
                 label += " (10)"
-            surf = font.render(label, True, (255, 255, 255))
+            display = label
+            surf = shop_font.render(display, True, (255, 255, 255))
+            while surf.get_width() > rect.width - 6 and len(display) > 0:
+                display = display[:-1]
+                surf = shop_font.render(display + "...", True, (255, 255, 255))
+            if display != label:
+                display += "..."
+                surf = shop_font.render(display, True, (255, 255, 255))
             screen.blit(surf, surf.get_rect(center=rect.center))
             option_rects.append(rect)
 
@@ -561,9 +581,9 @@ def pause_menu(shop_open):
     dragging = None
 
     while True:
-        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, 30)
+        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, SHOP_DD_HEIGHT)
         shop_option_rects = [
-            pygame.Rect(shop_rect.x, shop_rect.bottom + i * 30, shop_rect.width, 30)
+            pygame.Rect(shop_rect.x, shop_rect.bottom + i * SHOP_OPTION_HEIGHT, shop_rect.width, SHOP_OPTION_HEIGHT)
             for i in range(len(BACKGROUND_TILES))
         ]
         track_option_rects = []
@@ -755,9 +775,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             ad_timer = 0
             current_ad_index = (current_ad_index + 1) % len(ads)
 
-        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, 30)
+        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, SHOP_DD_HEIGHT)
         option_rects = [
-            pygame.Rect(shop_rect.x, shop_rect.bottom + i * 30, shop_rect.width, 30)
+            pygame.Rect(shop_rect.x, shop_rect.bottom + i * SHOP_OPTION_HEIGHT, shop_rect.width, SHOP_OPTION_HEIGHT)
             for i in range(len(BACKGROUND_TILES))
         ]
 
@@ -790,8 +810,10 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                         webbrowser.open(ads[current_ad_index]["link"])
                     except Exception:
                         pass
+                    shop_open = pause_menu(shop_open)
                 elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
+                    shop_open = pause_menu(shop_open)
                 elif shop_open:
                     for i, rect in enumerate(option_rects):
                         if rect.collidepoint(event.pos):

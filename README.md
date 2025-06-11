@@ -2,43 +2,30 @@
 
 GPT assisted coding journey
 
-## Simple Pygame Demo
+## Overview
 
-`game.py` contains a simple Pygame demo. Use `W`, `A`, `S` and `D` to move the ninja.
-Shoot projectiles with the arrow keys (as long as ammo is available). Avoid the oni enemies and collect the coins.
-Both enemies and coins can enter from any edge of the screen and travel horizontally or vertically. The
-player starts in the center and earns a point for each coin collected. Projectiles
-also award points when they destroy enemies or coins. Ammo pickups occasionally spawn and increase
-your projectile count when collected. Each level lasts 60 seconds with a
-countdown shown in the center of the screen. When the timer expires the next
-level begins with faster enemies and adjusted pickup rates. If an enemy
-collides with the player an end screen appears allowing you to restart
-with `R` or quit with `Q`.
+`game.py` implements a small arcade game in Pygame. Move the ninja with **W**, **A**, **S** and **D** and throw shuriken using the **arrow keys**. Zombies and coins spawn from the edges of the play area and cross the screen. Collecting a coin grants a point while eliminating a zombie awards a point and may spawn an ammo pickup. Coins hit by a shuriken are worth five points. Every ten points earned grants an extra life.
 
-### Assets
+Each level lasts 60 seconds. When the timer expires the next level begins with faster enemies and adjusted spawn rates. If a zombie touches the player all lives are lost and an end screen appears that lets you restart with **R** or quit with **Q**.
 
-Binary image and audio files aren't stored in this repository. When the game
-first runs it generates simple CC0 placeholder graphics and sound effects inside
-the `assets/` directory. You can drop in higher quality CC0 replacements.
-Place any number of `*.wav`, `*.ogg` or `*.mp3` files anywhere inside
-`assets/sounds/` and the game will load them automatically.
+Animated Blue Flame Flowers randomly decorate the map at the start of every level. The left side panel contains an **About** button which opens the developer's web page in a browser. The right panel houses the **Shop** where different grass backgrounds can be purchased for 10 points each. Press **Esc** during play to open the pause menu. From there you can adjust master, SFX and music volume sliders, switch the background music track and resume or exit the game.
+
+## Assets
+
+All images and sound effects used by the game are included in the `assets/` folder. You can replace them with your own CC0 files. The game automatically loads any `*.wav`, `*.ogg` or `*.mp3` placed in `assets/sounds/`.
 
 - files starting with `hit` play when zombies or the player are struck
 - files starting with `coin` play when coins are collected
-- files starting with `swish` play when throwing projectiles
-- any file starting with `komiku` will loop as background music if present
+- files starting with `swish` play when throwing shuriken
+- several background tracks are available and can be selected from the pause menu
 
-Suggested sources:
-
-- <https://www.kenney.nl/assets> for sprites
-- <https://opengameart.org> for additional images
-- <https://freesound.org> for sound effects
+Run the game with:
 
 ```
 python3 game.py
 ```
 
-Pygame is required to run the demo.
+Pygame is required to run the game.
 
 ### Credits
 
@@ -52,4 +39,3 @@ Pygame is required to run the demo.
  - **"It's Time for Adventure Vol 2 - Battle Theme"** by Komiku from [OpenGameArt](https://opengameart.org)
  - **8 Bit Battler** by Juhani Junkala from [OpenGameArt](https://opengameart.org)
  - **New Battle** by FoxSynergy from [OpenGameArt](https://opengameart.org)
-

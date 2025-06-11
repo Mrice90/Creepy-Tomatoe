@@ -302,8 +302,22 @@ def play_swish_sound():
         swish_sound.play()
 
 WIDTH, HEIGHT = 800, 600
-# Use a dark green background instead of an image
+# Use a dark green background for menus
 BACKGROUND_COLOR = (0, 100, 0)
+
+# ---------------------------------------------------------------------------
+# Gameplay background
+# ---------------------------------------------------------------------------
+BACKGROUND_TILE_PATH = os.path.join(
+    ASSET_DIR, "Backgrounds", "ground_grass_gen_01.png"
+)
+_raw_tile = pygame.image.load(BACKGROUND_TILE_PATH).convert()
+_tile_size = 128
+_tile = pygame.transform.scale(_raw_tile, (_tile_size, _tile_size))
+BACKGROUND_SURFACE = pygame.Surface((WIDTH, HEIGHT))
+for _x in range(0, WIDTH, _tile_size):
+    for _y in range(0, HEIGHT, _tile_size):
+        BACKGROUND_SURFACE.blit(_tile, (_x, _y))
 
 player_radius = player_idle_img.get_width() // 2
 player_speed = 5
@@ -739,7 +753,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             lives += 1
             next_life_score += 10
 
-        screen.fill(BACKGROUND_COLOR)
+        screen.blit(BACKGROUND_SURFACE, (0, 0))
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))
         level_text = font.render(f"Lvl {level_num}", True, (255, 255, 255))

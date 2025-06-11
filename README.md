@@ -22,9 +22,9 @@ first runs it generates simple CC0 placeholder graphics and sound effects inside
 the `assets/` directory. You can drop in higher quality CC0 replacements.
 Place any number of `*.wav`, `*.ogg` or `*.mp3` files anywhere inside
 `assets/sounds/` and the game will load them automatically. Decoration images
-placed in `assets/Decoration` will also be loaded. Files named
-`Blue Flame Flower.png`, `Butterfly.png` or `Fox Bush.png` are treated as
-animated spritesheets.
+placed in `assets/Decorations` will also be loaded. `Butterfly.png` should be
+arranged in quadrants and is treated as an animated spritesheet. It's currently
+the only decoration used by the game.
 
 - files starting with `hit` play when zombies or the player are struck
 - files starting with `coin` play when coins are collected

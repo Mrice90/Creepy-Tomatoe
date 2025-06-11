@@ -377,14 +377,15 @@ BACKGROUND_TILES = sorted(
 )
 
 # Decorative images placed randomly in each level
-DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
+DECORATION_DIR = os.path.join(ASSET_DIR, "Decorations")
 DECORATION_MAX_SIZE = 48
 DECORATION_IMAGES = []  # Static decorations
 # Animated decorations are stored as lists of frames extracted from a
 # single image arranged in quadrants (top-left, top-right, bottom-left,
 # bottom-right). Only specific files are treated as animated decorations.
 DECORATION_ANIMATIONS = []
-ANIMATED_FILES = {"Blue Flame Flower.png", "Fox Bush.png", "Butterfly.png"}
+# Currently only the butterfly spritesheet is included.
+ANIMATED_FILES = {"Butterfly.png"}
 if os.path.isdir(DECORATION_DIR):
     for f in os.listdir(DECORATION_DIR):
         if not f.lower().endswith(".png"):

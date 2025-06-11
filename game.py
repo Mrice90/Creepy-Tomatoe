@@ -168,6 +168,18 @@ class Zombie(pygame.sprite.Sprite):
             self.image = self.get_frame()
 
 
+class Decoration(pygame.sprite.Sprite):
+    """Static decorative sprite drawn on the play field."""
+
+    def __init__(self, image, pos):
+        super().__init__()
+        self.image = image
+        self.rect = self.image.get_rect(topleft=pos)
+
+    def update(self, dt):
+        pass
+
+
 ensure_assets()
 
 
@@ -342,6 +354,17 @@ BACKGROUND_TILES = sorted(
         if f.startswith("ground_grass_gen") and f.endswith(".png")
     ]
 )
+
+# Decorative images placed randomly in each level
+DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
+if os.path.isdir(DECORATION_DIR):
+    DECORATION_IMAGES = [
+        pygame.image.load(os.path.join(DECORATION_DIR, f)).convert_alpha()
+        for f in os.listdir(DECORATION_DIR)
+        if f.lower().endswith(".png")
+    ]
+else:
+    DECORATION_IMAGES = []
 
 
 def background_label(index):
@@ -736,6 +759,14 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     projectiles = []
     ammo = 5
 
+    decorations = []
+    if DECORATION_IMAGES:
+        for _ in range(random.randint(3, 8)):
+            img = random.choice(DECORATION_IMAGES)
+            x = random.randint(0, WIDTH - img.get_width())
+            y = random.randint(0, HEIGHT - img.get_height())
+            decorations.append(Decoration(img, (x, y)))
+
     elapsed = 0
     running = True
     shop_open = False
@@ -979,6 +1010,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         # Timer centered at the top
         timer_rect = timer_text.get_rect(center=(GAME_ORIGIN_X + WIDTH // 2, 20))
         screen.blit(timer_text, timer_rect)
+        for deco in decorations:
+            rect = deco.rect.move(GAME_ORIGIN_X, 0)
+            screen.blit(deco.image, rect)
         screen.blit(current_img, current_img.get_rect(center=(player_x + GAME_ORIGIN_X, player_y)))
         for enemy in enemies:
             rect = enemy[5].rect.move(GAME_ORIGIN_X, 0)

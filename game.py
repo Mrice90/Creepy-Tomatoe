@@ -379,37 +379,41 @@ BACKGROUND_TILES = sorted(
 # Decorative images placed randomly in each level
 DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
 DECORATION_MAX_SIZE = 96
-FLOWER_FRAMES = []
+DECORATION_IMAGES = []  # Static decorations
+# Animated decorations are stored as lists of four frames, extracted from
+# a single image arranged in quadrants (top-left, top-right, bottom-left,
+# bottom-right).
+DECORATION_ANIMATIONS = []
 if os.path.isdir(DECORATION_DIR):
-    _imgs = []
     for f in os.listdir(DECORATION_DIR):
         if not f.lower().endswith(".png"):
             continue
         path = os.path.join(DECORATION_DIR, f)
-        if f.lower() == "blue flame flower.png":
-            sheet = pygame.image.load(path).convert_alpha()
-            fw = sheet.get_width() // 4
-            fh = sheet.get_height() // 6
-            target = (
-                min(DECORATION_MAX_SIZE, player_idle_img.get_width()),
-                min(DECORATION_MAX_SIZE, player_idle_img.get_height()),
-            )
-            for i in range(4):
-                frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
-                frame.blit(sheet, (0, 0), pygame.Rect(i * fw, 0, fw, fh))
-                frame = pygame.transform.smoothscale(frame, target)
-                FLOWER_FRAMES.append(frame)
-            continue
-        img = pygame.image.load(path).convert_alpha()
-        if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
-            scale = min(
-                DECORATION_MAX_SIZE / img.get_width(),
-                DECORATION_MAX_SIZE / img.get_height(),
-            )
-            size = (int(img.get_width() * scale), int(img.get_height() * scale))
-            img = pygame.transform.smoothscale(img, size)
-        _imgs.append(img)
-    DECORATION_IMAGES = _imgs
+        sheet = pygame.image.load(path).convert_alpha()
+        fw, fh = sheet.get_width() // 2, sheet.get_height() // 2
+        target = (
+            min(DECORATION_MAX_SIZE, player_idle_img.get_width()),
+            min(DECORATION_MAX_SIZE, player_idle_img.get_height()),
+        )
+        if sheet.get_width() == fw * 2 and sheet.get_height() == fh * 2:
+            frames = []
+            for j in range(2):
+                for i in range(2):
+                    frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
+                    frame.blit(sheet, (0, 0), pygame.Rect(i * fw, j * fh, fw, fh))
+                    frame = pygame.transform.smoothscale(frame, target)
+                    frames.append(frame)
+            DECORATION_ANIMATIONS.append(frames)
+        else:
+            img = sheet
+            if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
+                scale = min(
+                    DECORATION_MAX_SIZE / img.get_width(),
+                    DECORATION_MAX_SIZE / img.get_height(),
+                )
+                size = (int(img.get_width() * scale), int(img.get_height() * scale))
+                img = pygame.transform.smoothscale(img, size)
+            DECORATION_IMAGES.append(img)
 else:
     DECORATION_IMAGES = []
 
@@ -807,17 +811,16 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     ammo = 5
 
     decorations = []
-    if DECORATION_IMAGES:
+    for img in DECORATION_IMAGES:
         for _ in range(random.randint(3, 8)):
-            img = random.choice(DECORATION_IMAGES)
             x = random.randint(0, max(0, WIDTH - img.get_width()))
             y = random.randint(0, max(0, HEIGHT - img.get_height()))
             decorations.append(Decoration(img, (x, y)))
-    if FLOWER_FRAMES:
+    for frames in DECORATION_ANIMATIONS:
         for _ in range(random.randint(3, 7)):
-            x = random.randint(0, max(0, WIDTH - FLOWER_FRAMES[0].get_width()))
-            y = random.randint(0, max(0, HEIGHT - FLOWER_FRAMES[0].get_height()))
-            decorations.append(AnimatedDecoration(FLOWER_FRAMES, (x, y)))
+            x = random.randint(0, max(0, WIDTH - frames[0].get_width()))
+            y = random.randint(0, max(0, HEIGHT - frames[0].get_height()))
+            decorations.append(AnimatedDecoration(frames, (x, y)))
 
     elapsed = 0
     running = True

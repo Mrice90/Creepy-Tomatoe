@@ -357,12 +357,22 @@ BACKGROUND_TILES = sorted(
 
 # Decorative images placed randomly in each level
 DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
+DECORATION_MAX_SIZE = 96
 if os.path.isdir(DECORATION_DIR):
-    DECORATION_IMAGES = [
-        pygame.image.load(os.path.join(DECORATION_DIR, f)).convert_alpha()
-        for f in os.listdir(DECORATION_DIR)
-        if f.lower().endswith(".png")
-    ]
+    _imgs = []
+    for f in os.listdir(DECORATION_DIR):
+        if not f.lower().endswith(".png"):
+            continue
+        img = pygame.image.load(os.path.join(DECORATION_DIR, f)).convert_alpha()
+        if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
+            scale = min(
+                DECORATION_MAX_SIZE / img.get_width(),
+                DECORATION_MAX_SIZE / img.get_height(),
+            )
+            size = (int(img.get_width() * scale), int(img.get_height() * scale))
+            img = pygame.transform.smoothscale(img, size)
+        _imgs.append(img)
+    DECORATION_IMAGES = _imgs
 else:
     DECORATION_IMAGES = []
 
@@ -763,8 +773,8 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     if DECORATION_IMAGES:
         for _ in range(random.randint(3, 8)):
             img = random.choice(DECORATION_IMAGES)
-            x = random.randint(0, WIDTH - img.get_width())
-            y = random.randint(0, HEIGHT - img.get_height())
+            x = random.randint(0, max(0, WIDTH - img.get_width()))
+            y = random.randint(0, max(0, HEIGHT - img.get_height()))
             decorations.append(Decoration(img, (x, y)))
 
     elapsed = 0

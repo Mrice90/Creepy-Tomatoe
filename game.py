@@ -228,8 +228,19 @@ if pygame.mixer.get_init():
     else:
         hit_sound = None
 
-    bg_tracks = find_sound_files("komiku")
-    bg_track_names = [os.path.splitext(os.path.basename(p))[0] for p in bg_tracks]
+    track_files = [
+        ("8-bit Battler", "8 Bit Battler.wav"),
+        ("Komiku", "Komiku - It's time for adventure vol 2 - 03 Battle Theme.mp3"),
+        ("New Battle", "New Battle.wav"),
+    ]
+    bg_tracks = []
+    bg_track_names = []
+    for name, fname in track_files:
+        path = os.path.join(sound_dir, fname)
+        if os.path.exists(path):
+            bg_tracks.append(path)
+            bg_track_names.append(name)
+
     current_track_index = 0
     if bg_tracks:
         try:
@@ -298,8 +309,8 @@ player_speed = 5
 projectile_radius = shuriken_img.get_width() // 2
 projectile_speed = 10
 
-# Scale factor for zombie size
-ZOMBIE_SCALE = 1.2
+# Scale factor for zombie size (increased for larger zombies)
+ZOMBIE_SCALE = 2.0
 
 # Determine enemy sprite size from a sample zombie sheet
 sample_sheet = pygame.image.load(zombie_sheet_paths[0])
@@ -386,7 +397,7 @@ def pause_menu():
     label_offset = 100  # space between labels and sliders
     exit_rect = pygame.Rect(0, 0, 200, 50)
     exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 220)
-    dropdown_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 200, 300, 40)
+    dropdown_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 240, 300, 40)
     dropdown_open = False
     option_rects = []
 

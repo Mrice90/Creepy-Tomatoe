@@ -14,10 +14,20 @@ try:
 except pygame.error:
     print("Warning: audio disabled")
 
-WIDTH, HEIGHT = 800, 600
+GAME_WIDTH = 800
 ASSET_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+# Determine the user's screen resolution and go fullscreen
+display_info = pygame.display.Info()
+SCREEN_WIDTH, SCREEN_HEIGHT = display_info.current_w, display_info.current_h
+WIDTH = GAME_WIDTH
+HEIGHT = SCREEN_HEIGHT
+
+# Side panel sizes for shop and ads
+LEFT_PANEL_WIDTH = max(200, (SCREEN_WIDTH - GAME_WIDTH) // 2)
+RIGHT_PANEL_WIDTH = SCREEN_WIDTH - GAME_WIDTH - LEFT_PANEL_WIDTH
+
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Ninja vs Zombies")
 
 
@@ -297,27 +307,45 @@ def play_coin_sound():
     if coin_sound:
         coin_sound.play()
 
+# Helper functions to play randomized sounds without immediate repeats
 def play_swish_sound():
     if swish_sound:
         swish_sound.play()
 
-WIDTH, HEIGHT = 800, 600
 # Use a dark green background for menus
 BACKGROUND_COLOR = (0, 100, 0)
 
 # ---------------------------------------------------------------------------
 # Gameplay background
 # ---------------------------------------------------------------------------
-BACKGROUND_TILE_PATH = os.path.join(
-    ASSET_DIR, "Backgrounds", "ground_grass_gen_01.png"
+BACKGROUND_DIR = os.path.join(ASSET_DIR, "Backgrounds")
+BACKGROUND_TILES = sorted(
+    [
+        os.path.join(BACKGROUND_DIR, f)
+        for f in os.listdir(BACKGROUND_DIR)
+        if f.startswith("ground_grass_gen") and f.endswith(".png")
+    ]
 )
-_raw_tile = pygame.image.load(BACKGROUND_TILE_PATH).convert()
+
 _tile_size = 128
-_tile = pygame.transform.scale(_raw_tile, (_tile_size, _tile_size))
-BACKGROUND_SURFACE = pygame.Surface((WIDTH, HEIGHT))
-for _x in range(0, WIDTH, _tile_size):
-    for _y in range(0, HEIGHT, _tile_size):
-        BACKGROUND_SURFACE.blit(_tile, (_x, _y))
+selected_background = 0
+unlocked_backgrounds = {0}
+
+def build_background(index):
+    """Load the indexed tile and build a tiling surface for the play area."""
+    path = BACKGROUND_TILES[index]
+    raw = pygame.image.load(path).convert()
+    tile = pygame.transform.scale(raw, (_tile_size, _tile_size))
+    surface = pygame.Surface((WIDTH, HEIGHT))
+    for _x in range(0, WIDTH, _tile_size):
+        for _y in range(0, HEIGHT, _tile_size):
+            surface.blit(tile, (_x, _y))
+    return surface
+
+BACKGROUND_SURFACE = build_background(selected_background)
+
+# Horizontal offset where the playable area begins on the screen
+GAME_ORIGIN_X = LEFT_PANEL_WIDTH
 
 player_radius = player_idle_img.get_width() // 2
 player_speed = 5
@@ -420,6 +448,55 @@ def spawn_ammo():
     return x, y
 
 
+def draw_left_panel():
+    """Render the advertisement panel on the left side of the screen."""
+    panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
+    pygame.draw.rect(screen, (30, 30, 30), panel)
+    lines = [
+        "Check out Grumpy Goose Studio!",
+        "youtube.com/@GrumpyGooseStudio",
+        "",
+        "Grab merch at:",
+        "redbubble.com/people/GrumpGoose/shop?asc=u",
+    ]
+    y = 40
+    for text in lines:
+        surf = font.render(text, True, (255, 255, 255))
+        screen.blit(surf, (10, y))
+        y += 30
+
+
+def draw_shop(dropdown_open):
+    """Render the shop panel and return list of option rects."""
+    panel = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH, 0, RIGHT_PANEL_WIDTH, HEIGHT)
+    pygame.draw.rect(screen, (40, 40, 40), panel)
+
+    title = font.render("Shop", True, (255, 255, 255))
+    screen.blit(title, (panel.x + 10, 10))
+
+    dd_rect = pygame.Rect(panel.x + 10, 60, panel.width - 20, 30)
+    pygame.draw.rect(screen, (80, 80, 80), dd_rect)
+    current_name = os.path.basename(BACKGROUND_TILES[selected_background])
+    txt = font.render(current_name, True, (255, 255, 255))
+    screen.blit(txt, txt.get_rect(center=dd_rect.center))
+
+    option_rects = []
+    if dropdown_open:
+        for i, path in enumerate(BACKGROUND_TILES):
+            rect = pygame.Rect(dd_rect.x, dd_rect.bottom + i * 30, dd_rect.width, 30)
+            color = (60, 60, 60)
+            pygame.draw.rect(screen, color, rect)
+            name = os.path.basename(path)
+            label = name
+            if i not in unlocked_backgrounds:
+                label += " (10)"
+            surf = font.render(label, True, (255, 255, 255))
+            screen.blit(surf, surf.get_rect(center=rect.center))
+            option_rects.append(rect)
+
+    return dd_rect, option_rects
+
+
 def pause_menu():
     """Display a simple pause/options menu and adjust audio settings."""
     global master_volume, sfx_volume, music_volume, current_track_index
@@ -429,8 +506,8 @@ def pause_menu():
     track_len = 240
     label_offset = 100  # space between labels and sliders
     exit_rect = pygame.Rect(0, 0, 200, 50)
-    exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 220)
-    dropdown_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 240, 300, 40)
+    exit_rect.center = (SCREEN_WIDTH // 2, HEIGHT // 2 + 220)
+    dropdown_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, HEIGHT // 2 - 240, 300, 40)
     dropdown_open = False
     option_rects = []
     dragging = None
@@ -477,7 +554,7 @@ def pause_menu():
                             break
                 else:
                     for i in range(3):
-                        track = pygame.Rect(WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + i * 80, track_len, 8)
+                        track = pygame.Rect(SCREEN_WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + i * 80, track_len, 8)
                         if track.collidepoint(event.pos):
                             selected = i
                             values[i] = int(max(0, min(100, (event.pos[0] - track.x) / track.width * 100)))
@@ -489,14 +566,14 @@ def pause_menu():
                 if event.button == 1:
                     dragging = None
             if event.type == pygame.MOUSEMOTION and dragging is not None:
-                track = pygame.Rect(WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + dragging * 80, track_len, 8)
+                track = pygame.Rect(SCREEN_WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + dragging * 80, track_len, 8)
                 values[dragging] = int(max(0, min(100, (event.pos[0] - track.x) / track.width * 100)))
                 master_volume, sfx_volume, music_volume = values
                 apply_volume()
 
         screen.fill(BACKGROUND_COLOR)
         title = font.render("Paused", True, (255, 255, 255))
-        screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 4)))
+        screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 4)))
 
         pygame.draw.rect(screen, (80, 80, 80), dropdown_rect)
         current_name = "No Tracks" if not bg_tracks else bg_track_names[current_track_index][:20]
@@ -514,15 +591,15 @@ def pause_menu():
         for i, (name, val) in enumerate(zip(options, values)):
             label = font.render(name, True, (255, 255, 255))
             y = HEIGHT // 2 - 80 + i * 80
-            screen.blit(label, (WIDTH // 2 - track_len // 2 - label_offset, y - 15))
-            track = pygame.Rect(WIDTH // 2 - track_len // 2, y, track_len, 8)
+            screen.blit(label, (SCREEN_WIDTH // 2 - track_len // 2 - label_offset, y - 15))
+            track = pygame.Rect(SCREEN_WIDTH // 2 - track_len // 2, y, track_len, 8)
             pygame.draw.rect(screen, (80, 80, 80), track)
             handle_x = track.x + int((val / 100) * track.width)
             color = (200, 0, 0) if i == selected else (200, 200, 200)
             pygame.draw.circle(screen, color, (handle_x, track.centery), 10)
 
         prompt = font.render("Space to Resume", True, (255, 255, 255))
-        screen.blit(prompt, prompt.get_rect(center=(WIDTH // 2, HEIGHT * 3 // 4)))
+        screen.blit(prompt, prompt.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT * 3 // 4)))
 
         pygame.draw.rect(screen, (150, 0, 0), exit_rect)
         exit_text = font.render("Exit Game", True, (255, 255, 255))
@@ -540,7 +617,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     # Display level number before starting
     screen.fill((0, 0, 0))
     level_text = font.render(f"Level {level_num}", True, (255, 255, 255))
-    screen.blit(level_text, level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+    screen.blit(level_text, level_text.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 2)))
     pygame.display.flip()
     pygame.time.delay(1500)
     player_x = WIDTH // 2
@@ -572,11 +649,18 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
 
     elapsed = 0
     running = True
+    shop_open = False
     while running:
         dt = clock.tick(60) / 1000
         elapsed += dt
         if elapsed >= 60:
             return "complete"
+
+        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, 30)
+        option_rects = [
+            pygame.Rect(shop_rect.x, shop_rect.bottom + i * 30, shop_rect.width, 30)
+            for i in range(len(BACKGROUND_TILES))
+        ]
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -601,6 +685,23 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                     projectiles.append([player_x, player_y, 0, projectile_speed, 0])
                     ammo -= 1
                     play_swish_sound()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if shop_rect.collidepoint(event.pos):
+                    shop_open = not shop_open
+                elif shop_open:
+                    for i, rect in enumerate(option_rects):
+                        if rect.collidepoint(event.pos):
+                            if i not in unlocked_backgrounds:
+                                if score >= 10:
+                                    score -= 10
+                                    unlocked_backgrounds.add(i)
+                                else:
+                                    break
+                            if i in unlocked_backgrounds:
+                                selected_background = i
+                                BACKGROUND_SURFACE = build_background(selected_background)
+                            shop_open = False
+                            break
 
         keys = pygame.key.get_pressed()
         moving = False
@@ -753,7 +854,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             lives += 1
             next_life_score += 10
 
-        screen.blit(BACKGROUND_SURFACE, (0, 0))
+        screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
+        draw_left_panel()
+        dd_rect, option_rects = draw_shop(shop_open)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))
         level_text = font.render(f"Lvl {level_num}", True, (255, 255, 255))
@@ -761,27 +864,27 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         timer_text = font.render(f"{int(60 - elapsed)}", True, (255, 255, 255))
 
         # Score and level on the left
-        screen.blit(score_text, (20, 10))
-        screen.blit(level_text, (20, 40))
+        screen.blit(score_text, (GAME_ORIGIN_X + 20, 10))
+        screen.blit(level_text, (GAME_ORIGIN_X + 20, 40))
 
         # Lives and ammo on the right
-        screen.blit(lives_text, (WIDTH - lives_text.get_width() - 20, 10))
-        screen.blit(ammo_text, (WIDTH - ammo_text.get_width() - 20, 40))
+        screen.blit(lives_text, (GAME_ORIGIN_X + WIDTH - lives_text.get_width() - 20, 10))
+        screen.blit(ammo_text, (GAME_ORIGIN_X + WIDTH - ammo_text.get_width() - 20, 40))
 
         # Timer centered at the top
-        timer_rect = timer_text.get_rect(center=(WIDTH // 2, 20))
+        timer_rect = timer_text.get_rect(center=(GAME_ORIGIN_X + WIDTH // 2, 20))
         screen.blit(timer_text, timer_rect)
-
-        screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
+        screen.blit(current_img, current_img.get_rect(center=(player_x + GAME_ORIGIN_X, player_y)))
         for enemy in enemies:
-            screen.blit(enemy[5].image, enemy[5].rect)
+            rect = enemy[5].rect.move(GAME_ORIGIN_X, 0)
+            screen.blit(enemy[5].image, rect)
         if coin_active:
-            screen.blit(coin_frames[coin_anim_index], (coin_x, coin_y))
+            screen.blit(coin_frames[coin_anim_index], (coin_x + GAME_ORIGIN_X, coin_y))
         if ammo_x is not None:
-            screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
+            screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x + GAME_ORIGIN_X, ammo_y)))
         for p in projectiles:
             rotated = pygame.transform.rotate(shuriken_img, p[4])
-            rect = rotated.get_rect(center=(int(p[0]), int(p[1])))
+            rect = rotated.get_rect(center=(int(p[0] + GAME_ORIGIN_X), int(p[1])))
             screen.blit(rotated, rect)
 
         pygame.display.flip()
@@ -809,9 +912,9 @@ def game_over_screen(score):
         score_text = info_font.render(f"Score: {score}", True, (255, 255, 255))
         prompt_text = info_font.render("Press R to Play Again or Q to Quit", True, (255, 255, 255))
 
-        screen.blit(over_text, over_text.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
-        screen.blit(score_text, score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
-        screen.blit(prompt_text, prompt_text.get_rect(center=(WIDTH // 2, HEIGHT * 2 // 3)))
+        screen.blit(over_text, over_text.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 3)))
+        screen.blit(score_text, score_text.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 2)))
+        screen.blit(prompt_text, prompt_text.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT * 2 // 3)))
 
         pygame.display.flip()
         clock.tick(60)

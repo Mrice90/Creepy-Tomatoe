@@ -247,6 +247,34 @@ blue_flower_frames = [
 ]
 blue_flower_scale = (player_idle_img.get_width() * 0.75) / blue_flower_frames[0].get_width()
 
+# ---------------------------------------------------------------------------
+# Decoration factory registry
+# ---------------------------------------------------------------------------
+# ``DECORATION_FACTORIES`` holds callables that return a new decoration
+# instance positioned randomly. This makes it easy to add more decoration
+# types in the future -- simply append another factory function to the list.
+DECORATION_FACTORIES = []
+
+
+def create_blue_flame_flower():
+    """Spawn a BlueFlameFlower at a random location."""
+    pos = (
+        random.randint(40, WIDTH - 40),
+        random.randint(40, HEIGHT - 40),
+    )
+    return BlueFlameFlower(blue_flower_frames, pos, blue_flower_scale)
+
+
+def spawn_random_decoration():
+    """Create a random decoration from the registered factories."""
+    factory = random.choice(DECORATION_FACTORIES)
+    return factory()
+
+
+# Register available decorations. Additional factories can be added here as
+# new decorative assets/classes are introduced.
+DECORATION_FACTORIES.append(create_blue_flame_flower)
+
 # Load sounds
 if pygame.mixer.get_init():
     sound_dir = os.path.join(ASSET_DIR, "sounds")
@@ -780,14 +808,11 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     projectiles = []
     ammo = 5
 
-    decoration = BlueFlameFlower(
-        blue_flower_frames,
-        (
-            random.randint(40, WIDTH - 40),
-            random.randint(40, HEIGHT - 40),
-        ),
-        blue_flower_scale,
-    )
+    # Spawn a small batch of decorative sprites. Using a list makes it easy to
+    # support multiple decoration types in the future.
+    decorations = [
+        spawn_random_decoration() for _ in range(random.randint(3, 5))
+    ]
 
 
     elapsed = 0
@@ -795,7 +820,8 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     shop_open = False
     while running:
         dt = clock.tick(60) / 1000
-        decoration.update(dt)
+        for deco in decorations:
+            deco.update(dt)
         elapsed += dt
         if elapsed >= 60:
             return "complete"
@@ -1016,7 +1042,8 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             next_life_score += 10
 
         screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
-        screen.blit(decoration.image, decoration.rect.move(GAME_ORIGIN_X, 0))
+        for deco in decorations:
+            screen.blit(deco.image, deco.rect.move(GAME_ORIGIN_X, 0))
         panel, about_rect = draw_left_panel()
         dd_rect, option_rects = draw_shop(shop_open)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))

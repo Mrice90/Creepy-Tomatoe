@@ -21,7 +21,10 @@ Binary image and audio files aren't stored in this repository. When the game
 first runs it generates simple CC0 placeholder graphics and sound effects inside
 the `assets/` directory. You can drop in higher quality CC0 replacements.
 Place any number of `*.wav`, `*.ogg` or `*.mp3` files anywhere inside
-`assets/sounds/` and the game will load them automatically:
+`assets/sounds/` and the game will load them automatically. Decoration images
+placed in `assets/Decoration` will also be loaded. Files named
+`Blue Flame Flower.png`, `Butterfly.png` or `Fox Bush.png` are treated as
+animated spritesheets.
 
 - files starting with `hit` play when zombies or the player are struck
 - files starting with `coin` play when coins are collected

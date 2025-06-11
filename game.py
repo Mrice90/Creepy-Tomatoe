@@ -380,10 +380,11 @@ BACKGROUND_TILES = sorted(
 DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
 DECORATION_MAX_SIZE = 48
 DECORATION_IMAGES = []  # Static decorations
-# Animated decorations are stored as lists of four frames, extracted from
-# a single image arranged in quadrants (top-left, top-right, bottom-left,
-# bottom-right).
+# Animated decorations are stored as lists of frames extracted from a
+# single image arranged in quadrants (top-left, top-right, bottom-left,
+# bottom-right). Only specific files are treated as animated decorations.
 DECORATION_ANIMATIONS = []
+ANIMATED_FILES = {"Blue Flame Flower.png", "Fox Bush.png", "Butterfly.png"}
 if os.path.isdir(DECORATION_DIR):
     for f in os.listdir(DECORATION_DIR):
         if not f.lower().endswith(".png"):
@@ -395,7 +396,7 @@ if os.path.isdir(DECORATION_DIR):
             min(DECORATION_MAX_SIZE, player_idle_img.get_width()),
             min(DECORATION_MAX_SIZE, player_idle_img.get_height()),
         )
-        if sheet.get_width() == fw * 2 and sheet.get_height() == fh * 2:
+        if f in ANIMATED_FILES and sheet.get_width() == fw * 2 and sheet.get_height() == fh * 2:
             frames = []
             bboxes = []
             for j in range(2):
@@ -450,6 +451,8 @@ if os.path.isdir(DECORATION_DIR):
             DECORATION_IMAGES.append(img)
 else:
     DECORATION_IMAGES = []
+
+DECORATION_POOL = [frames for frames in DECORATION_ANIMATIONS] + [img for img in DECORATION_IMAGES]
 
 
 def background_label(index):
@@ -845,16 +848,18 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     ammo = 5
 
     decorations = []
-    for img in DECORATION_IMAGES:
-        for _ in range(random.randint(3, 8)):
-            x = random.randint(0, max(0, WIDTH - img.get_width()))
-            y = random.randint(0, max(0, HEIGHT - img.get_height()))
-            decorations.append(Decoration(img, (x, y)))
-    for frames in DECORATION_ANIMATIONS:
-        for _ in range(random.randint(3, 7)):
+    for _ in range(random.randint(3, 7)):
+        choice = random.choice(DECORATION_POOL)
+        if isinstance(choice, list):
+            frames = choice
             x = random.randint(0, max(0, WIDTH - frames[0].get_width()))
             y = random.randint(0, max(0, HEIGHT - frames[0].get_height()))
             decorations.append(AnimatedDecoration(frames, (x, y)))
+        else:
+            img = choice
+            x = random.randint(0, max(0, WIDTH - img.get_width()))
+            y = random.randint(0, max(0, HEIGHT - img.get_height()))
+            decorations.append(Decoration(img, (x, y)))
 
     elapsed = 0
     running = True

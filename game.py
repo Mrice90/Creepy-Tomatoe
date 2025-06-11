@@ -120,7 +120,14 @@ class Zombie(pygame.sprite.Sprite):
             (0, 0),
             pygame.Rect(x, y, self.frame_width, self.frame_height),
         )
-        return frame
+        scaled = pygame.transform.scale(
+            frame,
+            (
+                int(self.frame_width * ZOMBIE_SCALE),
+                int(self.frame_height * ZOMBIE_SCALE),
+            ),
+        )
+        return scaled
 
     def update(self, dt):
         self.animation_timer += dt
@@ -212,25 +219,31 @@ if pygame.mixer.get_init():
         except pygame.error:
             pass
 
-    hit1_sounds = load_sound_variations("hit1")
-    hit3_sounds = load_sound_variations("hit3")
-    all_hit_sounds = hit1_sounds + hit3_sounds
+    hit_sound_path = os.path.join(sound_dir, "5Hit_Sounds", "mp3", "hit3.mp3")
+    if os.path.exists(hit_sound_path):
+        try:
+            hit_sound = pygame.mixer.Sound(hit_sound_path)
+        except pygame.error:
+            hit_sound = None
+    else:
+        hit_sound = None
 
     bg_tracks = find_sound_files("komiku")
+    bg_track_names = [os.path.splitext(os.path.basename(p))[0] for p in bg_tracks]
+    current_track_index = 0
     if bg_tracks:
-        # Randomly choose one background track to loop
-        bg_path = random.choice(bg_tracks)
         try:
-            pygame.mixer.music.load(bg_path)
+            pygame.mixer.music.load(bg_tracks[current_track_index])
             pygame.mixer.music.play(-1)
         except pygame.error:
             pass
 else:
     coin_sound = None
     swish_sound = None
-    hit1_sounds = []
-    hit3_sounds = []
-    all_hit_sounds = []
+    hit_sound = None
+    bg_tracks = []
+    bg_track_names = []
+    current_track_index = 0
 
 # ---------------------------------------------------------------------------
 # Volume configuration helpers
@@ -249,21 +262,22 @@ def apply_volume():
             coin_sound.set_volume(total_sfx)
         if swish_sound:
             swish_sound.set_volume(total_sfx)
-        for snd in all_hit_sounds:
-            snd.set_volume(total_sfx)
+        if hit_sound:
+            hit_sound.set_volume(total_sfx)
         pygame.mixer.music.set_volume(total_music)
 
 apply_volume()
 
 def start_music():
-    """Ensure background music is playing."""
-    if pygame.mixer.get_init() and bg_tracks and not pygame.mixer.music.get_busy():
-        path = random.choice(bg_tracks)
-        try:
-            pygame.mixer.music.load(path)
-            pygame.mixer.music.play(-1)
-        except pygame.error:
-            pass
+    """Ensure background music is playing using the selected track."""
+    if pygame.mixer.get_init() and bg_tracks:
+        path = bg_tracks[current_track_index]
+        if not pygame.mixer.music.get_busy():
+            try:
+                pygame.mixer.music.load(path)
+                pygame.mixer.music.play(-1)
+            except pygame.error:
+                pass
 
 # Helper functions to play randomized sounds without immediate repeats
 def play_coin_sound():
@@ -284,11 +298,14 @@ player_speed = 5
 projectile_radius = shuriken_img.get_width() // 2
 projectile_speed = 10
 
+# Scale factor for zombie size
+ZOMBIE_SCALE = 1.2
+
 # Determine enemy sprite size from a sample zombie sheet
 sample_sheet = pygame.image.load(zombie_sheet_paths[0])
 enemy_frame_w = sample_sheet.get_width() // 3
 enemy_frame_h = sample_sheet.get_height() // 4
-enemy_size = max(enemy_frame_w, enemy_frame_h)
+enemy_size = int(max(enemy_frame_w, enemy_frame_h) * ZOMBIE_SCALE)
 enemy_speed = 3
 coin_size = coin_frame_size
 coin_speed = 4
@@ -361,7 +378,7 @@ def spawn_ammo():
 
 def pause_menu():
     """Display a simple pause/options menu and adjust audio settings."""
-    global master_volume, sfx_volume, music_volume
+    global master_volume, sfx_volume, music_volume, current_track_index
     selected = 0
     options = ["Master", "SFX", "Music"]
     values = [master_volume, sfx_volume, music_volume]
@@ -369,6 +386,9 @@ def pause_menu():
     label_offset = 100  # space between labels and sliders
     exit_rect = pygame.Rect(0, 0, 200, 50)
     exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 220)
+    dropdown_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 200, 300, 40)
+    dropdown_open = False
+    option_rects = []
 
     while True:
         for event in pygame.event.get():
@@ -397,10 +417,36 @@ def pause_menu():
                 if exit_rect.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
+                if dropdown_rect.collidepoint(event.pos):
+                    dropdown_open = not dropdown_open
+                elif dropdown_open:
+                    for i, rect in enumerate(option_rects):
+                        if rect.collidepoint(event.pos):
+                            current_track_index = i
+                            try:
+                                pygame.mixer.music.load(bg_tracks[current_track_index])
+                                pygame.mixer.music.play(-1)
+                            except pygame.error:
+                                pass
+                            dropdown_open = False
+                            break
 
         screen.fill(BACKGROUND_COLOR)
         title = font.render("Paused", True, (255, 255, 255))
         screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 4)))
+
+        pygame.draw.rect(screen, (80, 80, 80), dropdown_rect)
+        current_name = "No Tracks" if not bg_tracks else bg_track_names[current_track_index][:20]
+        text_surf = font.render(current_name, True, (255, 255, 255))
+        screen.blit(text_surf, text_surf.get_rect(center=dropdown_rect.center))
+        option_rects = []
+        if dropdown_open:
+            for i, name in enumerate(bg_track_names):
+                rect = pygame.Rect(dropdown_rect.x, dropdown_rect.bottom + i * 40, dropdown_rect.width, 40)
+                pygame.draw.rect(screen, (60, 60, 60), rect)
+                lbl = font.render(name[:20], True, (255, 255, 255))
+                screen.blit(lbl, lbl.get_rect(center=rect.center))
+                option_rects.append(rect)
 
         for i, (name, val) in enumerate(zip(options, values)):
             label = font.render(name, True, (255, 255, 255))
@@ -559,8 +605,8 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
                 score += 1
-                if hit3_sounds:
-                    random.choice(hit3_sounds).play()
+                if hit_sound:
+                    hit_sound.play()
                 enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
                 enemy = Zombie(random.choice(zombie_sheet_paths))
                 enemy.set_direction(enemy_dir)
@@ -579,8 +625,8 @@ def run_game():
                 projectiles.remove(p)
 
         if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
-            if hit1_sounds:
-                random.choice(hit1_sounds).play()
+            if hit_sound:
+                hit_sound.play()
             running = False
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
@@ -602,9 +648,8 @@ def run_game():
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         screen.blit(score_text, (20, 10))
         # ammo indicator
-        screen.blit(shuriken_img, (20, 40))
-        ammo_text = font.render(str(ammo), True, (255, 255, 255))
-        screen.blit(ammo_text, (20 + shuriken_img.get_width() + 5, 45))
+        ammo_text = font.render(f"Shuriken: {ammo}", True, (255, 255, 255))
+        screen.blit(ammo_text, (20, 40))
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         screen.blit(enemy.image, enemy.rect)

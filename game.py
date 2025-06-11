@@ -170,6 +170,33 @@ class Zombie(pygame.sprite.Sprite):
 
 
 
+class BlueFlameFlower(pygame.sprite.Sprite):
+    """Simple looping decoration that animates through provided frames."""
+
+    def __init__(self, frames, pos, scale):
+        super().__init__()
+        self.frames = [
+            pygame.transform.scale(
+                frame, (int(frame.get_width() * scale), int(frame.get_height() * scale))
+            )
+            for frame in frames
+        ]
+        self.index = 0
+        self.timer = 0
+        self.speed = 0.15
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(center=pos)
+
+    def update(self, dt):
+        self.timer += dt
+        if self.timer >= self.speed:
+            self.timer = 0
+            self.index = (self.index + 1) % len(self.frames)
+            center = self.rect.center
+            self.image = self.frames[self.index]
+            self.rect = self.image.get_rect(center=center)
+
+
 ensure_assets()
 
 
@@ -205,6 +232,20 @@ for i in range(coin_sheet.get_width() // coin_frame_size):
 shuriken_img = pygame.image.load(
     os.path.join(ASSET_DIR, "Block Ninja", "shuriken.PNG")
 )
+
+# Decoration: Blue Flame Flower animation frames
+blue_flower_frames = [
+    pygame.image.load(
+        os.path.join(
+            ASSET_DIR,
+            "Decorations",
+            "Blue Flame Flower",
+            f"{i}.png",
+        )
+    ).convert_alpha()
+    for i in range(1, 5)
+]
+blue_flower_scale = (player_idle_img.get_width() * 0.75) / blue_flower_frames[0].get_width()
 
 # Load sounds
 if pygame.mixer.get_init():
@@ -739,12 +780,22 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     projectiles = []
     ammo = 5
 
+    decoration = BlueFlameFlower(
+        blue_flower_frames,
+        (
+            random.randint(40, WIDTH - 40),
+            random.randint(40, HEIGHT - 40),
+        ),
+        blue_flower_scale,
+    )
+
 
     elapsed = 0
     running = True
     shop_open = False
     while running:
         dt = clock.tick(60) / 1000
+        decoration.update(dt)
         elapsed += dt
         if elapsed >= 60:
             return "complete"
@@ -965,6 +1016,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             next_life_score += 10
 
         screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
+        screen.blit(decoration.image, decoration.rect.move(GAME_ORIGIN_X, 0))
         panel, about_rect = draw_left_panel()
         dd_rect, option_rects = draw_shop(shop_open)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))

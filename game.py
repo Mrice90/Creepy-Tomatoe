@@ -187,6 +187,8 @@ if pygame.mixer.get_init():
     def load_sound_variations(prefix):
         variations = []
         for path in find_sound_files(prefix):
+            if prefix.startswith("hit") and path.lower().endswith(".mp3"):
+                continue
             try:
                 variations.append(pygame.mixer.Sound(path))
             except pygame.error:
@@ -252,6 +254,16 @@ def apply_volume():
         pygame.mixer.music.set_volume(total_music)
 
 apply_volume()
+
+def start_music():
+    """Ensure background music is playing."""
+    if pygame.mixer.get_init() and bg_tracks and not pygame.mixer.music.get_busy():
+        path = random.choice(bg_tracks)
+        try:
+            pygame.mixer.music.load(path)
+            pygame.mixer.music.play(-1)
+        except pygame.error:
+            pass
 
 # Helper functions to play randomized sounds without immediate repeats
 def play_coin_sound():
@@ -356,7 +368,7 @@ def pause_menu():
     track_len = 240
     label_offset = 100  # space between labels and sliders
     exit_rect = pygame.Rect(0, 0, 200, 50)
-    exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 180)
+    exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 220)
 
     while True:
         for event in pygame.event.get():
@@ -413,6 +425,8 @@ def pause_menu():
 
 def run_game():
     global master_volume, sfx_volume, music_volume
+    if pygame.mixer.get_init() and not pygame.mixer.music.get_busy():
+        start_music()
     player_x = WIDTH // 2
     player_y = HEIGHT // 2
 

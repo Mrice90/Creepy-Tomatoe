@@ -31,28 +31,19 @@ RIGHT_PANEL_WIDTH = SCREEN_WIDTH - GAME_WIDTH - LEFT_PANEL_WIDTH
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Ninja vs Zombies")
 
-# Simple rotating advertisement links
+# Simple rotating advertisement links shown as images
 ads = [
     {
-        "lines": [
-            "Check out Grumpy Goose Studio!",
-            "youtube.com/@GrumpyGooseStudio",
-        ],
+        "image": "ad_ggs.png",
         "link": "https://youtube.com/@GrumpyGooseStudio",
     },
     {
-        "lines": [
-            "Watch our short!",
-            "Latest update",
-        ],
+        "image": "ad_short.png",
         "link": "https://youtube.com/shorts/-jrXM0WAVYg?si=ERcLkdPNpOAnzX7O",
     },
     {
-        "lines": [
-            "Grab merch:",
-            "redbubble.com/people/GrumpGoose/shop?asc=u",
-        ],
-        "link": "https://redbubble.com/people/GrumpGoose/shop?asc=u",
+        "image": "ad_project.png",
+        "link": "https://www.youtube.com/watch?v=y52U2hHFzQQ",
     },
 ]
 current_ad_index = 0
@@ -84,6 +75,15 @@ def generate_sound(path, frequency, duration):
         wav.writeframes(b"".join(frames))
 
 
+def draw_gradient_border(surface, rect, width):
+    """Draw a black to white gradient border around ``rect``."""
+    for i in range(width):
+        t = i / max(1, width - 1)
+        shade = int(255 * t)
+        color = (shade, shade, shade)
+        pygame.draw.rect(surface, color, rect.inflate(-i * 2, -i * 2), 1)
+
+
 def ensure_assets():
     ensure_directories()
     images = os.path.join(ASSET_DIR, "images")
@@ -111,6 +111,20 @@ def ensure_assets():
         def draw_kunai(s):
             pygame.draw.polygon(s, (192, 192, 192), [(16, 0), (28, 20), (16, 31), (4, 20)])
         generate_image(kunai_path, draw_kunai)
+
+    # Placeholder advertisement images
+    ad_images = [
+        ("ad_ggs.png", (70, 70, 70)),
+        ("ad_short.png", (60, 80, 120)),
+        ("ad_project.png", (120, 60, 60)),
+    ]
+    for name, color in ad_images:
+        path = os.path.join(images, name)
+        if not os.path.exists(path):
+            def draw_ad(s, c=color):
+                s.fill(c)
+                pygame.draw.polygon(s, (255, 255, 255), [(8, 8), (24, 16), (8, 24)])
+            generate_image(path, draw_ad)
 
     if pygame.mixer.get_init():
         # Custom sound effects are now included with the project so we no longer
@@ -182,6 +196,11 @@ class Zombie(pygame.sprite.Sprite):
 
 
 ensure_assets()
+
+# Load advertisement images after assets exist
+for ad in ads:
+    path = os.path.join(ASSET_DIR, "images", ad["image"])
+    ad["surface"] = pygame.image.load(path).convert_alpha()
 
 # Load images
 # Load Block Ninja sprites
@@ -483,13 +502,15 @@ def draw_left_panel():
     """Render the advertisement panel on the left side of the screen."""
     panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (30, 30, 30), panel)
-    pygame.draw.rect(screen, (200, 200, 200), panel, 2)
-    lines = ads[current_ad_index]["lines"]
-    y = 40
-    for text in lines:
-        surf = font.render(text, True, (255, 255, 255))
-        screen.blit(surf, (10, y))
-        y += 30
+    draw_gradient_border(screen, panel, 8)
+    img = ads[current_ad_index]["surface"]
+    rect = img.get_rect()
+    max_w = panel.width - 20
+    max_h = panel.height - 20
+    scale = min(max_w / rect.width, max_h / rect.height)
+    scaled = pygame.transform.smoothscale(img, (int(rect.width * scale), int(rect.height * scale)))
+    img_pos = scaled.get_rect(center=panel.center)
+    screen.blit(scaled, img_pos)
     return panel
 
 

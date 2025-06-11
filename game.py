@@ -35,24 +35,6 @@ SHOP_OPTION_HEIGHT = 24
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Ninja vs Zombies")
 
-# Simple rotating advertisement links shown as images
-ads = [
-    {
-        "image": "ad_ggs.png",
-        "link": "https://youtube.com/@GrumpyGooseStudio",
-    },
-    {
-        "image": "ad_short.png",
-        "link": "https://youtube.com/shorts/-jrXM0WAVYg?si=ERcLkdPNpOAnzX7O",
-    },
-    {
-        "image": "ad_project.png",
-        "link": "https://www.youtube.com/watch?v=y52U2hHFzQQ",
-    },
-]
-current_ad_index = 0
-ad_timer = 0
-
 
 def ensure_directories():
     os.makedirs(os.path.join(ASSET_DIR, "images"), exist_ok=True)
@@ -116,19 +98,6 @@ def ensure_assets():
             pygame.draw.polygon(s, (192, 192, 192), [(16, 0), (28, 20), (16, 31), (4, 20)])
         generate_image(kunai_path, draw_kunai)
 
-    # Placeholder advertisement images
-    ad_images = [
-        ("ad_ggs.png", (70, 70, 70)),
-        ("ad_short.png", (60, 80, 120)),
-        ("ad_project.png", (120, 60, 60)),
-    ]
-    for name, color in ad_images:
-        path = os.path.join(images, name)
-        if not os.path.exists(path):
-            def draw_ad(s, c=color):
-                s.fill(c)
-                pygame.draw.polygon(s, (255, 255, 255), [(8, 8), (24, 16), (8, 24)])
-            generate_image(path, draw_ad)
 
     if pygame.mixer.get_init():
         # Custom sound effects are now included with the project so we no longer
@@ -201,10 +170,6 @@ class Zombie(pygame.sprite.Sprite):
 
 ensure_assets()
 
-# Load advertisement images after assets exist
-for ad in ads:
-    path = os.path.join(ASSET_DIR, "images", ad["image"])
-    ad["surface"] = pygame.image.load(path).convert_alpha()
 
 # Load images
 # Load Block Ninja sprites
@@ -366,6 +331,12 @@ def play_swish_sound():
 # Use a dark green background for menus
 BACKGROUND_COLOR = (0, 100, 0)
 
+# Inversion settings for controls
+invert_move_x = False
+invert_move_y = False
+invert_shuriken_x = False
+invert_shuriken_y = False
+
 # ---------------------------------------------------------------------------
 # Gameplay background
 # ---------------------------------------------------------------------------
@@ -509,7 +480,7 @@ def spawn_ammo():
 
 
 def draw_left_panel():
-    """Render the advertisement panel and placeholder menus on the left."""
+    """Render the left menu panel with Options and About buttons."""
     panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (30, 30, 30), panel)
     draw_gradient_border(screen, panel, 8)
@@ -522,15 +493,7 @@ def draw_left_panel():
         txt = font.render(label, True, (255, 255, 255))
         screen.blit(txt, txt.get_rect(center=rect.center))
 
-    img = ads[current_ad_index]["surface"]
-    rect = img.get_rect()
-    max_w = panel.width - 20
-    max_h = panel.height - 120  # leave space for menu buttons
-    scale = min(max_w / rect.width, max_h / rect.height)
-    scaled = pygame.transform.smoothscale(img, (int(rect.width * scale), int(rect.height * scale)))
-    img_pos = scaled.get_rect(center=(panel.centerx, panel.centery + 40))
-    screen.blit(scaled, img_pos)
-    return panel
+    return panel, opt_rect, about_rect
 
 
 def draw_shop(dropdown_open):
@@ -582,6 +545,7 @@ def pause_menu(shop_open):
     """Display a simple pause/options menu and adjust audio settings."""
     global master_volume, sfx_volume, music_volume, current_track_index
     global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE, score
+    global invert_move_x, invert_move_y, invert_shuriken_x, invert_shuriken_y
     selected = 0
     options = ["Master", "SFX", "Music"]
     values = [master_volume, sfx_volume, music_volume]
@@ -600,6 +564,12 @@ def pause_menu(shop_open):
             for i in range(len(BACKGROUND_TILES))
         ]
         track_option_rects = []
+        checkbox_rects = [
+            pygame.Rect(SCREEN_WIDTH // 2 - track_len // 2, HEIGHT // 2 + 120 + i * 30, 20, 20)
+            for i in range(4)
+        ]
+        opt_rect = pygame.Rect(10, 10, LEFT_PANEL_WIDTH - 20, 30)
+        about_rect = pygame.Rect(10, 50, LEFT_PANEL_WIDTH - 20, 30)
         if dropdown_open:
             track_option_rects = [
                 pygame.Rect(dropdown_rect.x, dropdown_rect.bottom + i * 40, dropdown_rect.width, 40)
@@ -610,7 +580,7 @@ def pause_menu(shop_open):
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_ESCAPE:
                     master_volume, sfx_volume, music_volume = values
                     apply_volume()
                     return shop_open
@@ -631,13 +601,14 @@ def pause_menu(shop_open):
                 if exit_rect.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
-                ad_rect = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
-                if ad_rect.collidepoint(event.pos):
+                if opt_rect.collidepoint(event.pos):
+                    pass
+                elif about_rect.collidepoint(event.pos):
                     try:
-                        webbrowser.open(ads[current_ad_index]["link"])
+                        webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
                     except Exception:
                         pass
-                if shop_rect.collidepoint(event.pos):
+                elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
                 elif shop_open:
                     for i, rect in enumerate(shop_option_rects):
@@ -666,6 +637,15 @@ def pause_menu(shop_open):
                                 pass
                             dropdown_open = False
                             break
+                elif any(cb.collidepoint(event.pos) for cb in checkbox_rects):
+                    if checkbox_rects[0].collidepoint(event.pos):
+                        invert_move_x = not invert_move_x
+                    elif checkbox_rects[1].collidepoint(event.pos):
+                        invert_move_y = not invert_move_y
+                    elif checkbox_rects[2].collidepoint(event.pos):
+                        invert_shuriken_x = not invert_shuriken_x
+                    else:
+                        invert_shuriken_y = not invert_shuriken_y
                 else:
                     for i in range(3):
                         track = pygame.Rect(
@@ -720,7 +700,22 @@ def pause_menu(shop_open):
             color = (200, 0, 0) if i == selected else (200, 200, 200)
             pygame.draw.circle(screen, color, (handle_x, track.centery), 10)
 
-        prompt = font.render("Space to Resume", True, (255, 255, 255))
+        cb_labels = [
+            ("Invert Move X", invert_move_x),
+            ("Invert Move Y", invert_move_y),
+            ("Invert Shuriken X", invert_shuriken_x),
+            ("Invert Shuriken Y", invert_shuriken_y),
+        ]
+        for i, (lbl, val) in enumerate(cb_labels):
+            rect = checkbox_rects[i]
+            pygame.draw.rect(screen, (80, 80, 80), rect, 2)
+            if val:
+                pygame.draw.line(screen, (255, 255, 255), rect.topleft, rect.bottomright, 2)
+                pygame.draw.line(screen, (255, 255, 255), rect.topright, rect.bottomleft, 2)
+            text = font.render(lbl, True, (255, 255, 255))
+            screen.blit(text, (rect.right + 10, rect.y - 2))
+
+        prompt = font.render("Esc to Resume", True, (255, 255, 255))
         screen.blit(prompt, prompt.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT * 3 // 4)))
 
         pygame.draw.rect(screen, (150, 0, 0), exit_rect)
@@ -735,7 +730,6 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     global master_volume, sfx_volume, music_volume
     global score, lives, next_life_score
     global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE
-    global current_ad_index, ad_timer
     # Ensure the background surface exists in case an older save lacked it
     if BACKGROUND_SURFACE is None:
         BACKGROUND_SURFACE = build_background(selected_background)
@@ -778,16 +772,13 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     elapsed = 0
     running = True
     shop_open = False
-    ad_rect = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
+    opt_rect = pygame.Rect(10, 10, LEFT_PANEL_WIDTH - 20, 30)
+    about_rect = pygame.Rect(10, 50, LEFT_PANEL_WIDTH - 20, 30)
     while running:
         dt = clock.tick(60) / 1000
         elapsed += dt
         if elapsed >= 60:
             return "complete"
-        ad_timer += dt
-        if ad_timer >= 10:
-            ad_timer = 0
-            current_ad_index = (current_ad_index + 1) % len(ads)
 
         shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, SHOP_DD_HEIGHT)
         option_rects = [
@@ -800,31 +791,36 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_ESCAPE:
                     shop_open = pause_menu(shop_open)
                 elif event.key == pygame.K_LEFT and ammo > 0:
-                    projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
+                    dx = projectile_speed if invert_shuriken_x else -projectile_speed
+                    projectiles.append([player_x, player_y, dx, 0, 0])
                     ammo -= 1
                     play_swish_sound()
                 elif event.key == pygame.K_RIGHT and ammo > 0:
-                    projectiles.append([player_x, player_y, projectile_speed, 0, 0])
+                    dx = -projectile_speed if invert_shuriken_x else projectile_speed
+                    projectiles.append([player_x, player_y, dx, 0, 0])
                     ammo -= 1
                     play_swish_sound()
                 elif event.key == pygame.K_UP and ammo > 0:
-                    projectiles.append([player_x, player_y, 0, -projectile_speed, 0])
+                    dy = projectile_speed if invert_shuriken_y else -projectile_speed
+                    projectiles.append([player_x, player_y, 0, dy, 0])
                     ammo -= 1
                     play_swish_sound()
                 elif event.key == pygame.K_DOWN and ammo > 0:
-                    projectiles.append([player_x, player_y, 0, projectile_speed, 0])
+                    dy = -projectile_speed if invert_shuriken_y else projectile_speed
+                    projectiles.append([player_x, player_y, 0, dy, 0])
                     ammo -= 1
                     play_swish_sound()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if ad_rect.collidepoint(event.pos):
+                if opt_rect.collidepoint(event.pos):
+                    shop_open = pause_menu(shop_open)
+                elif about_rect.collidepoint(event.pos):
                     try:
-                        webbrowser.open(ads[current_ad_index]["link"])
+                        webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
                     except Exception:
                         pass
-                    shop_open = pause_menu(shop_open)
                 elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
                     shop_open = pause_menu(shop_open)
@@ -846,16 +842,16 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         keys = pygame.key.get_pressed()
         moving = False
         if keys[pygame.K_a]:
-            player_x -= player_speed
+            player_x += player_speed if invert_move_x else -player_speed
             moving = True
         if keys[pygame.K_d]:
-            player_x += player_speed
+            player_x -= player_speed if invert_move_x else player_speed
             moving = True
         if keys[pygame.K_w]:
-            player_y -= player_speed
+            player_y += player_speed if invert_move_y else -player_speed
             moving = True
         if keys[pygame.K_s]:
-            player_y += player_speed
+            player_y -= player_speed if invert_move_y else player_speed
             moving = True
 
         if moving:

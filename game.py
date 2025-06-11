@@ -509,17 +509,26 @@ def spawn_ammo():
 
 
 def draw_left_panel():
-    """Render the advertisement panel on the left side of the screen."""
+    """Render the advertisement panel and placeholder menus on the left."""
     panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (30, 30, 30), panel)
     draw_gradient_border(screen, panel, 8)
+
+    # Placeholder menu buttons
+    opt_rect = pygame.Rect(10, 10, panel.width - 20, 30)
+    about_rect = pygame.Rect(10, 50, panel.width - 20, 30)
+    for rect, label in [(opt_rect, "Options"), (about_rect, "About")]:
+        pygame.draw.rect(screen, (80, 80, 80), rect)
+        txt = font.render(label, True, (255, 255, 255))
+        screen.blit(txt, txt.get_rect(center=rect.center))
+
     img = ads[current_ad_index]["surface"]
     rect = img.get_rect()
     max_w = panel.width - 20
-    max_h = panel.height - 20
+    max_h = panel.height - 120  # leave space for menu buttons
     scale = min(max_w / rect.width, max_h / rect.height)
     scaled = pygame.transform.smoothscale(img, (int(rect.width * scale), int(rect.height * scale)))
-    img_pos = scaled.get_rect(center=panel.center)
+    img_pos = scaled.get_rect(center=(panel.centerx, panel.centery + 40))
     screen.blit(scaled, img_pos)
     return panel
 
@@ -532,6 +541,9 @@ def draw_shop(dropdown_open):
 
     title = font.render("Shop", True, (255, 255, 255))
     screen.blit(title, (panel.x + 10, 10))
+
+    bg_label = shop_font.render("Background", True, (255, 255, 255))
+    screen.blit(bg_label, (panel.x + 10, 40))
 
     dd_rect = pygame.Rect(panel.x + 10, 60, panel.width - 20, SHOP_DD_HEIGHT)
     pygame.draw.rect(screen, (80, 80, 80), dd_rect)
@@ -569,6 +581,7 @@ def draw_shop(dropdown_open):
 def pause_menu(shop_open):
     """Display a simple pause/options menu and adjust audio settings."""
     global master_volume, sfx_volume, music_volume, current_track_index
+    global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE, score
     selected = 0
     options = ["Master", "SFX", "Music"]
     values = [master_volume, sfx_volume, music_volume]
@@ -678,6 +691,7 @@ def pause_menu(shop_open):
                 apply_volume()
 
         screen.fill(BACKGROUND_COLOR)
+        screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
         draw_left_panel()
         draw_shop(shop_open)
         title = font.render("Paused", True, (255, 255, 255))

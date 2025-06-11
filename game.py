@@ -319,11 +319,15 @@ sample_sheet = pygame.image.load(zombie_sheet_paths[0])
 enemy_frame_w = sample_sheet.get_width() // 3
 enemy_frame_h = sample_sheet.get_height() // 4
 enemy_size = int(max(enemy_frame_w, enemy_frame_h) * ZOMBIE_SCALE)
+# Slightly smaller hitbox than the sprite size
+ZOMBIE_HITBOX_SCALE = 0.85
 BASE_ENEMY_SPEED = 3
 coin_size = coin_frame_size
-BASE_COIN_SPEED = 4
+# Coins move slower by default
+BASE_COIN_SPEED = 2
 BASE_AMMO_INTERVAL = 4
-BASE_COIN_DELAY = 0.5
+# Longer delay before coins respawn
+BASE_COIN_DELAY = 1.5
 
 # new color for ammo pickup/projectile ui
 AMMO_COLOR = (255, 255, 255)
@@ -339,10 +343,15 @@ lives = 3
 next_life_score = 10
 current_level = 1
 
-def check_collision(px, py, ex, ey, size, radius):
-    circle_rect = pygame.Rect(px - radius, py - radius,
-                              radius * 2, radius * 2)
-    square_rect = pygame.Rect(ex, ey, size, size)
+def check_collision(px, py, ex, ey, size, radius, scale=1.0):
+    """Collision between a circle and square with optional square scaling."""
+    circle_rect = pygame.Rect(px - radius, py - radius, radius * 2, radius * 2)
+    if scale != 1.0:
+        adj = size * scale
+        offset = (size - adj) / 2
+        square_rect = pygame.Rect(ex + offset, ey + offset, adj, adj)
+    else:
+        square_rect = pygame.Rect(ex, ey, size, size)
     return circle_rect.colliderect(square_rect)
 
 
@@ -648,7 +657,15 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 continue
             hit_any = False
             for enemy in enemies:
-                if check_collision(p[0], p[1], enemy[0], enemy[1], enemy_size, projectile_radius):
+                if check_collision(
+                    p[0],
+                    p[1],
+                    enemy[0],
+                    enemy[1],
+                    enemy_size,
+                    projectile_radius,
+                    ZOMBIE_HITBOX_SCALE,
+                ):
                     score += 1
                     if hit_sound:
                         hit_sound.play()
@@ -672,7 +689,15 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 projectiles.remove(p)
 
         for enemy in enemies:
-            if check_collision(player_x, player_y, enemy[0], enemy[1], enemy_size, player_radius):
+            if check_collision(
+                player_x,
+                player_y,
+                enemy[0],
+                enemy[1],
+                enemy_size,
+                player_radius,
+                ZOMBIE_HITBOX_SCALE,
+            ):
                 if hit_sound:
                     hit_sound.play()
                 return "dead"
@@ -699,13 +724,20 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))
         level_text = font.render(f"Lvl {level_num}", True, (255, 255, 255))
-        screen.blit(score_text, (20, 10))
-        screen.blit(lives_text, (20, 40))
-        screen.blit(level_text, (20, 70))
         ammo_text = font.render(f"Shuriken: {ammo}", True, (255, 255, 255))
-        screen.blit(ammo_text, (20, 100))
         timer_text = font.render(f"{int(60 - elapsed)}", True, (255, 255, 255))
-        screen.blit(timer_text, timer_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+
+        # Score and level on the left
+        screen.blit(score_text, (20, 10))
+        screen.blit(level_text, (20, 40))
+
+        # Lives and ammo on the right
+        screen.blit(lives_text, (WIDTH - lives_text.get_width() - 20, 10))
+        screen.blit(ammo_text, (WIDTH - ammo_text.get_width() - 20, 40))
+
+        # Timer centered at the top
+        timer_rect = timer_text.get_rect(center=(WIDTH // 2, 20))
+        screen.blit(timer_text, timer_rect)
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         for enemy in enemies:

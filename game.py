@@ -168,6 +168,27 @@ class Zombie(pygame.sprite.Sprite):
             self.image = self.get_frame()
 
 
+class AnimatedDecoration(pygame.sprite.Sprite):
+    """Animated decorative sprite using a list of frames."""
+
+    def __init__(self, frames, pos, speed=0.2):
+        super().__init__()
+        self.frames = frames
+        self.frame_index = 0
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(topleft=pos)
+        self.anim_speed = speed
+        self.anim_timer = 0
+
+    def update(self, dt):
+        self.anim_timer += dt
+        if self.anim_timer >= self.anim_speed:
+            self.anim_timer = 0
+            self.frame_index = (self.frame_index + 1) % len(self.frames)
+            topleft = self.rect.topleft
+            self.image = self.frames[self.frame_index]
+            self.rect = self.image.get_rect(topleft=topleft)
+
 class Decoration(pygame.sprite.Sprite):
     """Static decorative sprite drawn on the play field."""
 
@@ -358,12 +379,24 @@ BACKGROUND_TILES = sorted(
 # Decorative images placed randomly in each level
 DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
 DECORATION_MAX_SIZE = 96
+FLOWER_FRAMES = []
 if os.path.isdir(DECORATION_DIR):
     _imgs = []
     for f in os.listdir(DECORATION_DIR):
         if not f.lower().endswith(".png"):
             continue
-        img = pygame.image.load(os.path.join(DECORATION_DIR, f)).convert_alpha()
+        path = os.path.join(DECORATION_DIR, f)
+        if f.lower() == "blue flame flower.png":
+            sheet = pygame.image.load(path).convert_alpha()
+            fw = sheet.get_width() // 4
+            fh = sheet.get_height() // 6
+            for i in range(4):
+                frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
+                frame.blit(sheet, (0, 0), pygame.Rect(i * fw, 0, fw, fh))
+                frame = pygame.transform.smoothscale(frame, (fw * 2, fh * 2))
+                FLOWER_FRAMES.append(frame)
+            continue
+        img = pygame.image.load(path).convert_alpha()
         if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
             scale = min(
                 DECORATION_MAX_SIZE / img.get_width(),
@@ -776,6 +809,10 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             x = random.randint(0, max(0, WIDTH - img.get_width()))
             y = random.randint(0, max(0, HEIGHT - img.get_height()))
             decorations.append(Decoration(img, (x, y)))
+    if FLOWER_FRAMES:
+        x = random.randint(0, max(0, WIDTH - FLOWER_FRAMES[0].get_width()))
+        y = random.randint(0, max(0, HEIGHT - FLOWER_FRAMES[0].get_height()))
+        decorations.append(AnimatedDecoration(FLOWER_FRAMES, (x, y)))
 
     elapsed = 0
     running = True
@@ -922,6 +959,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 coin_anim_index = 0
                 coin_anim_timer = 0
                 coin_active = True
+
+        for deco in decorations:
+            deco.update(dt)
 
         for p in projectiles[:]:
             p[0] += p[2]

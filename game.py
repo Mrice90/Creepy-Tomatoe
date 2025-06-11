@@ -479,21 +479,59 @@ def spawn_ammo():
     return x, y
 
 
-def draw_left_panel():
-    """Render the left menu panel with Options and About buttons."""
+def draw_left_panel(options_open=False, render=True):
+    """Return rectangles for the left panel and optionally draw it."""
     panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
-    pygame.draw.rect(screen, (30, 30, 30), panel)
-    draw_gradient_border(screen, panel, 8)
+    if render:
+        pygame.draw.rect(screen, (30, 30, 30), panel)
+        draw_gradient_border(screen, panel, 8)
 
-    # Placeholder menu buttons
-    opt_rect = pygame.Rect(10, 10, panel.width - 20, 30)
-    about_rect = pygame.Rect(10, 50, panel.width - 20, 30)
-    for rect, label in [(opt_rect, "Options"), (about_rect, "About")]:
-        pygame.draw.rect(screen, (80, 80, 80), rect)
-        txt = font.render(label, True, (255, 255, 255))
-        screen.blit(txt, txt.get_rect(center=rect.center))
+    if not options_open:
+        opt_rect = pygame.Rect(10, 10, panel.width - 20, 30)
+        about_rect = pygame.Rect(10, 50, panel.width - 20, 30)
+        if render:
+            for rect, label in [(opt_rect, "Options"), (about_rect, "About")]:
+                pygame.draw.rect(screen, (80, 80, 80), rect)
+                txt = font.render(label, True, (255, 255, 255))
+                screen.blit(txt, txt.get_rect(center=rect.center))
 
-    return panel, opt_rect, about_rect
+        return panel, opt_rect, about_rect, [], None
+
+    y = 10
+    if render:
+        title = font.render("Options", True, (255, 255, 255))
+        screen.blit(title, (panel.x + 10, y))
+    y += 40
+
+    sections = [
+        ("Movement Controls", [("Invert X", invert_move_x), ("Invert Y", invert_move_y)]),
+        ("Shuriken Controls", [("Invert X", invert_shuriken_x), ("Invert Y", invert_shuriken_y)]),
+    ]
+    radio_rects = []
+    for heading, opts in sections:
+        if render:
+            label = font.render(heading, True, (255, 255, 255))
+            screen.blit(label, (panel.x + 10, y))
+        y += 30
+        for name, val in opts:
+            rect = pygame.Rect(panel.x + 20, y, 20, 20)
+            if render:
+                pygame.draw.circle(screen, (80, 80, 80), rect.center, 10, 2)
+                if val:
+                    pygame.draw.circle(screen, (255, 255, 255), rect.center, 6)
+                txt = font.render(name, True, (255, 255, 255))
+                screen.blit(txt, (rect.right + 10, y - 4))
+            radio_rects.append((name, rect))
+            y += 30
+        y += 10
+
+    back_rect = pygame.Rect(10, HEIGHT - 40, panel.width - 20, 30)
+    if render:
+        pygame.draw.rect(screen, (80, 80, 80), back_rect)
+        back_txt = font.render("Back", True, (255, 255, 255))
+        screen.blit(back_txt, back_txt.get_rect(center=back_rect.center))
+
+    return panel, None, None, radio_rects, back_rect
 
 
 def draw_shop(dropdown_open):
@@ -672,7 +710,7 @@ def pause_menu(shop_open):
 
         screen.fill(BACKGROUND_COLOR)
         screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
-        draw_left_panel()
+        draw_left_panel(False)
         draw_shop(shop_open)
         title = font.render("Paused", True, (255, 255, 255))
         screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 4)))
@@ -772,8 +810,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     elapsed = 0
     running = True
     shop_open = False
-    opt_rect = pygame.Rect(10, 10, LEFT_PANEL_WIDTH - 20, 30)
-    about_rect = pygame.Rect(10, 50, LEFT_PANEL_WIDTH - 20, 30)
+    options_open = False
     while running:
         dt = clock.tick(60) / 1000
         elapsed += dt
@@ -785,6 +822,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             pygame.Rect(shop_rect.x, shop_rect.bottom + i * SHOP_OPTION_HEIGHT, shop_rect.width, SHOP_OPTION_HEIGHT)
             for i in range(len(BACKGROUND_TILES))
         ]
+
+        # Rects for the left panel (no drawing yet)
+        _, opt_rect, about_rect, radio_rects, back_rect = draw_left_panel(options_open, render=False)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -814,30 +854,63 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                     ammo -= 1
                     play_swish_sound()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if opt_rect.collidepoint(event.pos):
-                    shop_open = pause_menu(shop_open)
-                elif about_rect.collidepoint(event.pos):
-                    try:
-                        webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
-                    except Exception:
-                        pass
-                elif shop_rect.collidepoint(event.pos):
-                    shop_open = not shop_open
-                    shop_open = pause_menu(shop_open)
-                elif shop_open:
-                    for i, rect in enumerate(option_rects):
-                        if rect.collidepoint(event.pos):
-                            if i not in unlocked_backgrounds:
-                                if score >= 10:
-                                    score -= 10
-                                    unlocked_backgrounds.add(i)
-                                else:
-                                    break
-                            if i in unlocked_backgrounds:
-                                selected_background = i
-                                BACKGROUND_SURFACE = build_background(selected_background)
-                            shop_open = False
-                            break
+                if options_open:
+                    if back_rect and back_rect.collidepoint(event.pos):
+                        options_open = False
+                    elif shop_rect.collidepoint(event.pos):
+                        shop_open = not shop_open
+                        shop_open = pause_menu(shop_open)
+                    elif shop_open:
+                        for i, rect in enumerate(option_rects):
+                            if rect.collidepoint(event.pos):
+                                if i not in unlocked_backgrounds:
+                                    if score >= 10:
+                                        score -= 10
+                                        unlocked_backgrounds.add(i)
+                                    else:
+                                        break
+                                if i in unlocked_backgrounds:
+                                    selected_background = i
+                                    BACKGROUND_SURFACE = build_background(selected_background)
+                                shop_open = False
+                                break
+                    else:
+                        for idx, (_name, rect) in enumerate(radio_rects):
+                            if rect.collidepoint(event.pos):
+                                if idx == 0:
+                                    invert_move_x = not invert_move_x
+                                elif idx == 1:
+                                    invert_move_y = not invert_move_y
+                                elif idx == 2:
+                                    invert_shuriken_x = not invert_shuriken_x
+                                elif idx == 3:
+                                    invert_shuriken_y = not invert_shuriken_y
+                                break
+                else:
+                    if opt_rect.collidepoint(event.pos):
+                        options_open = True
+                    elif about_rect.collidepoint(event.pos):
+                        try:
+                            webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
+                        except Exception:
+                            pass
+                    elif shop_rect.collidepoint(event.pos):
+                        shop_open = not shop_open
+                        shop_open = pause_menu(shop_open)
+                    elif shop_open:
+                        for i, rect in enumerate(option_rects):
+                            if rect.collidepoint(event.pos):
+                                if i not in unlocked_backgrounds:
+                                    if score >= 10:
+                                        score -= 10
+                                        unlocked_backgrounds.add(i)
+                                    else:
+                                        break
+                                if i in unlocked_backgrounds:
+                                    selected_background = i
+                                    BACKGROUND_SURFACE = build_background(selected_background)
+                                shop_open = False
+                                break
 
         keys = pygame.key.get_pressed()
         moving = False
@@ -991,7 +1064,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
             next_life_score += 10
 
         screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
-        draw_left_panel()
+        panel, opt_rect, about_rect, radio_rects, back_rect = draw_left_panel(options_open)
         dd_rect, option_rects = draw_shop(shop_open)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))

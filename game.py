@@ -193,8 +193,23 @@ if pygame.mixer.get_init():
                 pass
         return variations
 
-    coin_sounds = load_sound_variations("coin")
-    swish_sounds = load_sound_variations("swish")
+    # Load only single coin and swish sounds to avoid randomization issues
+    coin_sound = None
+    coin_path = os.path.join(sound_dir, "coin_sounds", "coin1.wav")
+    if os.path.exists(coin_path):
+        try:
+            coin_sound = pygame.mixer.Sound(coin_path)
+        except pygame.error:
+            pass
+
+    swish_sound = None
+    swish_path = os.path.join(sound_dir, "swishes", "swishes", "swish-1.wav")
+    if os.path.exists(swish_path):
+        try:
+            swish_sound = pygame.mixer.Sound(swish_path)
+        except pygame.error:
+            pass
+
     hit_sounds = load_sound_variations("hit")
 
     bg_tracks = find_sound_files("komiku")
@@ -207,7 +222,9 @@ if pygame.mixer.get_init():
         except pygame.error:
             pass
 else:
-    coin_sounds = swish_sounds = hit_sounds = []
+    coin_sound = None
+    swish_sound = None
+    hit_sounds = []
 
 # ---------------------------------------------------------------------------
 # Volume configuration helpers
@@ -222,35 +239,24 @@ def apply_volume():
     total_sfx = (master_volume / 100) * (sfx_volume / 100)
     total_music = (master_volume / 100) * (music_volume / 100)
     if pygame.mixer.get_init():
-        for snd in coin_sounds + swish_sounds + hit_sounds:
+        if coin_sound:
+            coin_sound.set_volume(total_sfx)
+        if swish_sound:
+            swish_sound.set_volume(total_sfx)
+        for snd in hit_sounds:
             snd.set_volume(total_sfx)
         pygame.mixer.music.set_volume(total_music)
 
 apply_volume()
 
 # Helper functions to play randomized sounds without immediate repeats
-last_coin_sound = None
-last_swish_sound = None
-
 def play_coin_sound():
-    global last_coin_sound
-    if coin_sounds:
-        choices = coin_sounds
-        if last_coin_sound in choices and len(choices) > 1:
-            choices = [s for s in choices if s is not last_coin_sound]
-        snd = random.choice(choices)
-        snd.play()
-        last_coin_sound = snd
+    if coin_sound:
+        coin_sound.play()
 
 def play_swish_sound():
-    global last_swish_sound
-    if swish_sounds:
-        choices = swish_sounds
-        if last_swish_sound in choices and len(choices) > 1:
-            choices = [s for s in choices if s is not last_swish_sound]
-        snd = random.choice(choices)
-        snd.play()
-        last_swish_sound = snd
+    if swish_sound:
+        swish_sound.play()
 
 WIDTH, HEIGHT = 800, 600
 # Use a dark green background instead of an image
@@ -345,6 +351,8 @@ def pause_menu():
     values = [master_volume, sfx_volume, music_volume]
     track_len = 240
     label_offset = 100  # space between labels and sliders
+    exit_rect = pygame.Rect(0, 0, 200, 50)
+    exit_rect.center = (WIDTH // 2, HEIGHT // 2 + 180)
 
     while True:
         for event in pygame.event.get():
@@ -369,6 +377,11 @@ def pause_menu():
                     master_volume, sfx_volume, music_volume = values
                     apply_volume()
 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if exit_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
+
         screen.fill(BACKGROUND_COLOR)
         title = font.render("Paused", True, (255, 255, 255))
         screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 4)))
@@ -385,6 +398,10 @@ def pause_menu():
 
         prompt = font.render("Space to Resume", True, (255, 255, 255))
         screen.blit(prompt, prompt.get_rect(center=(WIDTH // 2, HEIGHT * 3 // 4)))
+
+        pygame.draw.rect(screen, (150, 0, 0), exit_rect)
+        exit_text = font.render("Exit Game", True, (255, 255, 255))
+        screen.blit(exit_text, exit_text.get_rect(center=exit_rect.center))
 
         pygame.display.flip()
         clock.tick(60)

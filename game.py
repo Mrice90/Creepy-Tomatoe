@@ -556,8 +556,8 @@ def pause_menu(shop_open):
             pygame.Rect(shop_rect.x, shop_rect.bottom + i * SHOP_OPTION_HEIGHT, shop_rect.width, SHOP_OPTION_HEIGHT)
             for i in range(len(BACKGROUND_TILES))
         ]
+        panel_rect, about_rect = draw_left_panel(render=False)
         track_option_rects = []
-        about_rect = pygame.Rect(10, 10, LEFT_PANEL_WIDTH - 20, 30)
         if dropdown_open:
             track_option_rects = [
                 pygame.Rect(dropdown_rect.x, dropdown_rect.bottom + i * 40, dropdown_rect.width, 40)
@@ -594,6 +594,10 @@ def pause_menu(shop_open):
                         webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
                     except Exception:
                         pass
+                elif panel_rect.collidepoint(event.pos):
+                    master_volume, sfx_volume, music_volume = values
+                    apply_volume()
+                    return shop_open
                 elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
                 elif shop_open:
@@ -649,7 +653,7 @@ def pause_menu(shop_open):
 
         screen.fill(BACKGROUND_COLOR)
         screen.blit(BACKGROUND_SURFACE, (GAME_ORIGIN_X, 0))
-        draw_left_panel(False)
+        draw_left_panel()
         draw_shop(shop_open)
         title = font.render("Paused", True, (255, 255, 255))
         screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 4)))

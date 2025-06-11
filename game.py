@@ -768,6 +768,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     global master_volume, sfx_volume, music_volume
     global score, lives, next_life_score
     global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE
+    global invert_move_x, invert_move_y, invert_shuriken_x, invert_shuriken_y
     # Ensure the background surface exists in case an older save lacked it
     if BACKGROUND_SURFACE is None:
         BACKGROUND_SURFACE = build_background(selected_background)

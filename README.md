@@ -42,6 +42,14 @@ Pygame is required to run the demo.
 
 ### Credits
 
-- **Zombie RPG sprites** by Curt (March 20, 2013) from [OpenGameArt](https://opengameart.org)
-- **Block Ninja 2D sprites** by Korba™ (May 28, 2014) from [OpenGameArt](https://opengameart.org)
+ - **Zombie RPG sprites** by Curt (March 20, 2013) from [OpenGameArt](https://opengameart.org)
+ - **Block Ninja 2D sprites** by Korba™ (May 28, 2014) from [OpenGameArt](https://opengameart.org)
+ - **Forest background** by Ansimuz from [OpenGameArt](https://opengameart.org)
+ - **Coin animation** by Kenney from [OpenGameArt](https://opengameart.org)
+ - **5 Hit Sounds** by Kenney from [OpenGameArt](https://opengameart.org)
+ - **Coin sound effects** by Kenney from [OpenGameArt](https://opengameart.org)
+ - **Swish sound effects** by Kenney from [OpenGameArt](https://opengameart.org)
+ - **"It's Time for Adventure Vol 2 - Battle Theme"** by Komiku from [OpenGameArt](https://opengameart.org)
+ - **8 Bit Battler** by Juhani Junkala from [OpenGameArt](https://opengameart.org)
+ - **New Battle** by FoxSynergy from [OpenGameArt](https://opengameart.org)
 

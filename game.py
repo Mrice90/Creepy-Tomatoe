@@ -168,37 +168,6 @@ class Zombie(pygame.sprite.Sprite):
             self.image = self.get_frame()
 
 
-class AnimatedDecoration(pygame.sprite.Sprite):
-    """Animated decorative sprite using a list of frames."""
-
-    def __init__(self, frames, pos, speed=0.2):
-        super().__init__()
-        self.frames = frames
-        self.frame_index = 0
-        self.image = self.frames[0]
-        self.rect = self.image.get_rect(topleft=pos)
-        self.anim_speed = speed
-        self.anim_timer = 0
-
-    def update(self, dt):
-        self.anim_timer += dt
-        if self.anim_timer >= self.anim_speed:
-            self.anim_timer = 0
-            self.frame_index = (self.frame_index + 1) % len(self.frames)
-            topleft = self.rect.topleft
-            self.image = self.frames[self.frame_index]
-            self.rect = self.image.get_rect(topleft=topleft)
-
-class Decoration(pygame.sprite.Sprite):
-    """Static decorative sprite drawn on the play field."""
-
-    def __init__(self, image, pos):
-        super().__init__()
-        self.image = image
-        self.rect = self.image.get_rect(topleft=pos)
-
-    def update(self, dt):
-        pass
 
 
 ensure_assets()
@@ -376,84 +345,6 @@ BACKGROUND_TILES = sorted(
     ]
 )
 
-# Decorative images placed randomly in each level
-DECORATION_DIR = os.path.join(ASSET_DIR, "Decorations")
-DECORATION_MAX_SIZE = 48
-DECORATION_IMAGES = []  # Static decorations
-# Animated decorations are stored as lists of frames extracted from a
-# single image arranged in quadrants (top-left, top-right, bottom-left,
-# bottom-right). Only specific files are treated as animated decorations.
-DECORATION_ANIMATIONS = []
-# Currently only the butterfly spritesheet is included.
-ANIMATED_FILES = {"Butterfly.png"}
-if os.path.isdir(DECORATION_DIR):
-    for f in os.listdir(DECORATION_DIR):
-        if not f.lower().endswith(".png"):
-            continue
-        path = os.path.join(DECORATION_DIR, f)
-        sheet = pygame.image.load(path).convert_alpha()
-        fw, fh = sheet.get_width() // 2, sheet.get_height() // 2
-        target = (
-            min(DECORATION_MAX_SIZE, player_idle_img.get_width()),
-            min(DECORATION_MAX_SIZE, player_idle_img.get_height()),
-        )
-        if f in ANIMATED_FILES and sheet.get_width() == fw * 2 and sheet.get_height() == fh * 2:
-            frames = []
-            bboxes = []
-            for j in range(2):
-                for i in range(2):
-                    frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
-                    frame.blit(sheet, (0, 0), pygame.Rect(i * fw, j * fh, fw, fh))
-                    mask = pygame.mask.from_surface(frame)
-                    rects = mask.get_bounding_rects()
-                    if rects:
-                        minx = min(r.x for r in rects)
-                        miny = min(r.y for r in rects)
-                        maxx = max(r.x + r.w for r in rects)
-                        maxy = max(r.y + r.h for r in rects)
-                        bbox = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
-                    else:
-                        bbox = pygame.Rect(0, 0, fw, fh)
-                    frames.append(frame)
-                    bboxes.append(bbox)
-
-            minx = min(r.x for r in bboxes)
-            miny = min(r.y for r in bboxes)
-            maxx = max(r.x + r.w for r in bboxes)
-            maxy = max(r.y + r.h for r in bboxes)
-            union = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
-
-            aligned = []
-            for frame, bbox in zip(frames, bboxes):
-                crop = frame.subsurface(bbox)
-                surf = pygame.Surface(union.size, pygame.SRCALPHA)
-                surf.blit(crop, (bbox.x - union.x, bbox.y - union.y))
-                surf = pygame.transform.smoothscale(surf, target)
-                aligned.append(surf)
-            DECORATION_ANIMATIONS.append(aligned)
-        else:
-            img = sheet
-            mask = pygame.mask.from_surface(img)
-            rects = mask.get_bounding_rects()
-            if rects:
-                minx = min(r.x for r in rects)
-                miny = min(r.y for r in rects)
-                maxx = max(r.x + r.w for r in rects)
-                maxy = max(r.y + r.h for r in rects)
-                bbox = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
-                img = img.subsurface(bbox)
-            if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
-                scale = min(
-                    DECORATION_MAX_SIZE / img.get_width(),
-                    DECORATION_MAX_SIZE / img.get_height(),
-                )
-                size = (int(img.get_width() * scale), int(img.get_height() * scale))
-                img = pygame.transform.smoothscale(img, size)
-            DECORATION_IMAGES.append(img)
-else:
-    DECORATION_IMAGES = []
-
-DECORATION_POOL = [frames for frames in DECORATION_ANIMATIONS] + [img for img in DECORATION_IMAGES]
 
 
 def background_label(index):
@@ -848,19 +739,6 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     projectiles = []
     ammo = 5
 
-    decorations = []
-    for _ in range(random.randint(3, 7)):
-        choice = random.choice(DECORATION_POOL)
-        if isinstance(choice, list):
-            frames = choice
-            x = random.randint(0, max(0, WIDTH - frames[0].get_width()))
-            y = random.randint(0, max(0, HEIGHT - frames[0].get_height()))
-            decorations.append(AnimatedDecoration(frames, (x, y)))
-        else:
-            img = choice
-            x = random.randint(0, max(0, WIDTH - img.get_width()))
-            y = random.randint(0, max(0, HEIGHT - img.get_height()))
-            decorations.append(Decoration(img, (x, y)))
 
     elapsed = 0
     running = True
@@ -1008,8 +886,6 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 coin_anim_timer = 0
                 coin_active = True
 
-        for deco in decorations:
-            deco.update(dt)
 
         for p in projectiles[:]:
             p[0] += p[2]
@@ -1108,9 +984,6 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         # Timer centered at the top
         timer_rect = timer_text.get_rect(center=(GAME_ORIGIN_X + WIDTH // 2, 20))
         screen.blit(timer_text, timer_rect)
-        for deco in decorations:
-            rect = deco.rect.move(GAME_ORIGIN_X, 0)
-            screen.blit(deco.image, rect)
         screen.blit(current_img, current_img.get_rect(center=(player_x + GAME_ORIGIN_X, player_y)))
         for enemy in enemies:
             rect = enemy[5].rect.move(GAME_ORIGIN_X, 0)

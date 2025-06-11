@@ -378,7 +378,7 @@ BACKGROUND_TILES = sorted(
 
 # Decorative images placed randomly in each level
 DECORATION_DIR = os.path.join(ASSET_DIR, "Decoration")
-DECORATION_MAX_SIZE = 96
+DECORATION_MAX_SIZE = 48
 DECORATION_IMAGES = []  # Static decorations
 # Animated decorations are stored as lists of four frames, extracted from
 # a single image arranged in quadrants (top-left, top-right, bottom-left,
@@ -422,14 +422,24 @@ if os.path.isdir(DECORATION_DIR):
             union = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
 
             aligned = []
-            for frame in frames:
+            for frame, bbox in zip(frames, bboxes):
+                crop = frame.subsurface(bbox)
                 surf = pygame.Surface(union.size, pygame.SRCALPHA)
-                surf.blit(frame, (-union.x, -union.y))
+                surf.blit(crop, (bbox.x - union.x, bbox.y - union.y))
                 surf = pygame.transform.smoothscale(surf, target)
                 aligned.append(surf)
             DECORATION_ANIMATIONS.append(aligned)
         else:
             img = sheet
+            mask = pygame.mask.from_surface(img)
+            rects = mask.get_bounding_rects()
+            if rects:
+                minx = min(r.x for r in rects)
+                miny = min(r.y for r in rects)
+                maxx = max(r.x + r.w for r in rects)
+                maxy = max(r.y + r.h for r in rects)
+                bbox = pygame.Rect(minx, miny, maxx - minx, maxy - miny)
+                img = img.subsurface(bbox)
             if img.get_width() > DECORATION_MAX_SIZE or img.get_height() > DECORATION_MAX_SIZE:
                 scale = min(
                     DECORATION_MAX_SIZE / img.get_width(),

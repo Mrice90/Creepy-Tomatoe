@@ -419,6 +419,7 @@ def pause_menu():
     dropdown_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 240, 300, 40)
     dropdown_open = False
     option_rects = []
+    dragging = None
 
     while True:
         for event in pygame.event.get():
@@ -460,6 +461,24 @@ def pause_menu():
                                 pass
                             dropdown_open = False
                             break
+                else:
+                    for i in range(3):
+                        track = pygame.Rect(WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + i * 80, track_len, 8)
+                        if track.collidepoint(event.pos):
+                            selected = i
+                            values[i] = int(max(0, min(100, (event.pos[0] - track.x) / track.width * 100)))
+                            master_volume, sfx_volume, music_volume = values
+                            apply_volume()
+                            dragging = i
+                            break
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    dragging = None
+            if event.type == pygame.MOUSEMOTION and dragging is not None:
+                track = pygame.Rect(WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + dragging * 80, track_len, 8)
+                values[dragging] = int(max(0, min(100, (event.pos[0] - track.x) / track.width * 100)))
+                master_volume, sfx_volume, music_volume = values
+                apply_volume()
 
         screen.fill(BACKGROUND_COLOR)
         title = font.render("Paused", True, (255, 255, 255))

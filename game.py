@@ -242,6 +242,8 @@ if pygame.mixer.get_init():
             bg_track_names.append(name)
 
     current_track_index = 0
+    if "Komiku" in bg_track_names:
+        current_track_index = bg_track_names.index("Komiku")
     if bg_tracks:
         try:
             pygame.mixer.music.load(bg_tracks[current_track_index])
@@ -317,9 +319,9 @@ sample_sheet = pygame.image.load(zombie_sheet_paths[0])
 enemy_frame_w = sample_sheet.get_width() // 3
 enemy_frame_h = sample_sheet.get_height() // 4
 enemy_size = int(max(enemy_frame_w, enemy_frame_h) * ZOMBIE_SCALE)
-enemy_speed = 3
+BASE_ENEMY_SPEED = 3
 coin_size = coin_frame_size
-coin_speed = 4
+BASE_COIN_SPEED = 4
 
 # new color for ammo pickup/projectile ui
 AMMO_COLOR = (255, 255, 255)
@@ -329,6 +331,12 @@ shuriken_img = shuriken_img.convert_alpha()
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 
+# Global game state
+score = 0
+lives = 3
+next_life_score = 10
+current_level = 1
+
 def check_collision(px, py, ex, ey, size, radius):
     circle_rect = pygame.Rect(px - radius, py - radius,
                               radius * 2, radius * 2)
@@ -336,47 +344,47 @@ def check_collision(px, py, ex, ey, size, radius):
     return circle_rect.colliderect(square_rect)
 
 
-def spawn_enemy():
+def spawn_enemy(speed):
     """Spawn an enemy from a random edge moving inwards."""
     direction = random.choice(["down", "up", "left", "right"])
     if direction == "down":
         x = random.randint(0, WIDTH - enemy_size)
         y = -enemy_size
-        dx, dy = 0, enemy_speed
+        dx, dy = 0, speed
     elif direction == "up":
         x = random.randint(0, WIDTH - enemy_size)
         y = HEIGHT
-        dx, dy = 0, -enemy_speed
+        dx, dy = 0, -speed
     elif direction == "left":
         x = WIDTH
         y = random.randint(0, HEIGHT - enemy_size)
-        dx, dy = -enemy_speed, 0
+        dx, dy = -speed, 0
     else:  # right
         x = -enemy_size
         y = random.randint(0, HEIGHT - enemy_size)
-        dx, dy = enemy_speed, 0
+        dx, dy = speed, 0
     return x, y, dx, dy, direction
 
 
-def spawn_coin():
+def spawn_coin(speed):
     """Spawn a coin from a random edge moving across the screen."""
     direction = random.choice(["down", "up", "left", "right"])
     if direction == "down":
         x = random.randint(0, WIDTH - coin_size)
         y = -coin_size
-        dx, dy = 0, coin_speed
+        dx, dy = 0, speed
     elif direction == "up":
         x = random.randint(0, WIDTH - coin_size)
         y = HEIGHT
-        dx, dy = 0, -coin_speed
+        dx, dy = 0, -speed
     elif direction == "left":
         x = WIDTH
         y = random.randint(0, HEIGHT - coin_size)
-        dx, dy = -coin_speed, 0
+        dx, dy = -speed, 0
     else:  # right
         x = -coin_size
         y = random.randint(0, HEIGHT - coin_size)
-        dx, dy = coin_speed, 0
+        dx, dy = speed, 0
     return x, y, dx, dy
 
 
@@ -480,10 +488,17 @@ def pause_menu():
         clock.tick(60)
 
 
-def run_game():
-    global master_volume, sfx_volume, music_volume
+def run_level(level_num, enemy_speed, coin_speed, enemy_count):
+    global master_volume, sfx_volume, music_volume, score, lives, next_life_score
     if pygame.mixer.get_init() and not pygame.mixer.music.get_busy():
         start_music()
+
+    # Display level number before starting
+    screen.fill((0, 0, 0))
+    level_text = font.render(f"Level {level_num}", True, (255, 255, 255))
+    screen.blit(level_text, level_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+    pygame.display.flip()
+    pygame.time.delay(1500)
     player_x = WIDTH // 2
     player_y = HEIGHT // 2
 
@@ -491,26 +506,32 @@ def run_game():
     player_anim_timer = 0
     current_img = player_idle_img
 
-    enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
-    enemy = Zombie(random.choice(zombie_sheet_paths))
-    enemy.set_direction(enemy_dir)
-    enemy.rect.topleft = (enemy_x, enemy_y)
-    enemy_spawn_count = 1
+    enemies = []
+    for _ in range(enemy_count):
+        ex, ey, edx, edy, edir = spawn_enemy(enemy_speed)
+        eobj = Zombie(random.choice(zombie_sheet_paths))
+        eobj.set_direction(edir)
+        eobj.rect.topleft = (ex, ey)
+        enemies.append([ex, ey, edx, edy, edir, eobj])
+    enemy_spawn_count = enemy_count
 
-    coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+    coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
     coin_anim_index = 0
     coin_anim_timer = 0
 
     ammo_x, ammo_y = None, None
 
     projectiles = []
-
-    score = 0
     ammo = 5
 
+    elapsed = 0
     running = True
     while running:
         dt = clock.tick(60) / 1000
+        elapsed += dt
+        if elapsed >= 60:
+            return "complete"
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -563,24 +584,25 @@ def run_game():
         player_x = max(player_radius, min(WIDTH - player_radius, player_x))
         player_y = max(player_radius, min(HEIGHT - player_radius, player_y))
 
-        enemy.update(dt)
-
-        enemy_x += enemy_dx
-        enemy_y += enemy_dy
-        enemy.rect.topleft = (enemy_x, enemy_y)
-        if (
-            enemy_x < -enemy_size
-            or enemy_x > WIDTH
-            or enemy_y < -enemy_size
-            or enemy_y > HEIGHT
-        ):
-            enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
-            enemy = Zombie(random.choice(zombie_sheet_paths))
-            enemy.set_direction(enemy_dir)
-            enemy.rect.topleft = (enemy_x, enemy_y)
-            enemy_spawn_count += 1
-            if enemy_spawn_count % 4 == 0 and ammo_x is None:
-                ammo_x, ammo_y = spawn_ammo()
+        # Update enemies
+        for enemy in enemies:
+            enemy[5].update(dt)
+            enemy[0] += enemy[2]
+            enemy[1] += enemy[3]
+            enemy[5].rect.topleft = (enemy[0], enemy[1])
+            if (
+                enemy[0] < -enemy_size
+                or enemy[0] > WIDTH
+                or enemy[1] < -enemy_size
+                or enemy[1] > HEIGHT
+            ):
+                enemy[0], enemy[1], enemy[2], enemy[3], enemy[4] = spawn_enemy(enemy_speed)
+                enemy[5] = Zombie(random.choice(zombie_sheet_paths))
+                enemy[5].set_direction(enemy[4])
+                enemy[5].rect.topleft = (enemy[0], enemy[1])
+                enemy_spawn_count += 1
+                if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                    ammo_x, ammo_y = spawn_ammo()
 
         coin_x += coin_dx
         coin_y += coin_dy
@@ -597,11 +619,10 @@ def run_game():
             or coin_y < -coin_size
             or coin_y > HEIGHT
         ):
-            coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+            coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
             coin_anim_index = 0
             coin_anim_timer = 0
 
-        # Update projectiles
         for p in projectiles[:]:
             p[0] += p[2]
             p[1] += p[3]
@@ -614,36 +635,42 @@ def run_game():
             ):
                 projectiles.remove(p)
                 continue
-            if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
-                score += 1
-                if hit_sound:
-                    hit_sound.play()
-                enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
-                enemy = Zombie(random.choice(zombie_sheet_paths))
-                enemy.set_direction(enemy_dir)
-                enemy.rect.topleft = (enemy_x, enemy_y)
-                enemy_spawn_count += 1
-                if enemy_spawn_count % 4 == 0 and ammo_x is None:
-                    ammo_x, ammo_y = spawn_ammo()
+            hit_any = False
+            for enemy in enemies:
+                if check_collision(p[0], p[1], enemy[0], enemy[1], enemy_size, projectile_radius):
+                    score += 1
+                    if hit_sound:
+                        hit_sound.play()
+                    enemy[0], enemy[1], enemy[2], enemy[3], enemy[4] = spawn_enemy(enemy_speed)
+                    enemy[5] = Zombie(random.choice(zombie_sheet_paths))
+                    enemy[5].set_direction(enemy[4])
+                    enemy[5].rect.topleft = (enemy[0], enemy[1])
+                    enemy_spawn_count += 1
+                    if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                        ammo_x, ammo_y = spawn_ammo()
+                    hit_any = True
+                    break
+            if hit_any:
                 projectiles.remove(p)
                 continue
             if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
-                score += 1
+                score += 5
                 play_coin_sound()
-                coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+                coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
                 coin_anim_index = 0
                 coin_anim_timer = 0
                 projectiles.remove(p)
 
-        if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
-            if hit_sound:
-                hit_sound.play()
-            running = False
+        for enemy in enemies:
+            if check_collision(player_x, player_y, enemy[0], enemy[1], enemy_size, player_radius):
+                if hit_sound:
+                    hit_sound.play()
+                return "dead"
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
             play_coin_sound()
-            coin_x, coin_y, coin_dx, coin_dy = spawn_coin()
+            coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
             coin_anim_index = 0
             coin_anim_timer = 0
 
@@ -655,15 +682,23 @@ def run_game():
             ammo += 1
             ammo_x, ammo_y = None, None
 
+        while score >= next_life_score:
+            lives += 1
+            next_life_score += 10
+
         screen.fill(BACKGROUND_COLOR)
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+        lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))
+        level_text = font.render(f"Lvl {level_num}", True, (255, 255, 255))
         screen.blit(score_text, (20, 10))
-        # ammo indicator
+        screen.blit(lives_text, (20, 40))
+        screen.blit(level_text, (20, 70))
         ammo_text = font.render(f"Shuriken: {ammo}", True, (255, 255, 255))
-        screen.blit(ammo_text, (20, 40))
+        screen.blit(ammo_text, (20, 100))
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
-        screen.blit(enemy.image, enemy.rect)
+        for enemy in enemies:
+            screen.blit(enemy[5].image, enemy[5].rect)
         screen.blit(coin_frames[coin_anim_index], (coin_x, coin_y))
         if ammo_x is not None:
             screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
@@ -674,7 +709,7 @@ def run_game():
 
         pygame.display.flip()
 
-    return score
+    return "dead"
 
 
 def game_over_screen(score):
@@ -706,10 +741,31 @@ def game_over_screen(score):
 
 
 def main():
+    global score, lives, next_life_score, current_level
+    enemy_speed = BASE_ENEMY_SPEED
+    coin_speed = BASE_COIN_SPEED
     while True:
-        score = run_game()
-        if not game_over_screen(score):
-            break
+        enemy_count = 1 + (current_level - 1) // 3
+        result = run_level(current_level, enemy_speed, coin_speed, enemy_count)
+        if result == "complete":
+            current_level += 1
+            enemy_speed *= 1.05
+            coin_speed *= 1.05
+            continue
+        else:  # player died
+            lives -= 1
+            if lives > 0:
+                continue
+            if game_over_screen(score):
+                score = 0
+                lives = 3
+                next_life_score = 10
+                current_level = 1
+                enemy_speed = BASE_ENEMY_SPEED
+                coin_speed = BASE_COIN_SPEED
+                continue
+            else:
+                break
 
     pygame.quit()
 

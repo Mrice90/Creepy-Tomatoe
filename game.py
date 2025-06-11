@@ -390,10 +390,14 @@ if os.path.isdir(DECORATION_DIR):
             sheet = pygame.image.load(path).convert_alpha()
             fw = sheet.get_width() // 4
             fh = sheet.get_height() // 6
+            target = (
+                player_idle_img.get_width() // 2,
+                player_idle_img.get_height() // 2,
+            )
             for i in range(4):
                 frame = pygame.Surface((fw, fh), pygame.SRCALPHA)
                 frame.blit(sheet, (0, 0), pygame.Rect(i * fw, 0, fw, fh))
-                frame = pygame.transform.smoothscale(frame, (fw * 2, fh * 2))
+                frame = pygame.transform.smoothscale(frame, target)
                 FLOWER_FRAMES.append(frame)
             continue
         img = pygame.image.load(path).convert_alpha()

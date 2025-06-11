@@ -342,7 +342,10 @@ def build_background(index):
             surface.blit(tile, (_x, _y))
     return surface
 
+# This will hold the rendered tile background for the playable area.
+# Initialize here so it is always defined.
 BACKGROUND_SURFACE = build_background(selected_background)
+
 
 # Horizontal offset where the playable area begins on the screen
 GAME_ORIGIN_X = LEFT_PANEL_WIDTH
@@ -613,6 +616,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     global master_volume, sfx_volume, music_volume
     global score, lives, next_life_score
     global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE
+    # Ensure the background surface exists in case an older save lacked it
+    if BACKGROUND_SURFACE is None:
+        BACKGROUND_SURFACE = build_background(selected_background)
     if pygame.mixer.get_init() and not pygame.mixer.music.get_busy():
         start_music()
 

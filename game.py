@@ -748,7 +748,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
         ]
 
         # Rects for the left panel (no drawing yet)
-        _, about_rect = draw_left_panel(render=False)
+        panel_rect, about_rect = draw_left_panel(render=False)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -783,6 +783,9 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                         webbrowser.open("https://www.facebook.com/GrumpyGooseStudio/")
                     except Exception:
                         pass
+                    shop_open = pause_menu(shop_open)
+                elif panel_rect.collidepoint(event.pos):
+                    shop_open = pause_menu(shop_open)
                 elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
                     shop_open = pause_menu(shop_open)

@@ -210,7 +210,9 @@ if pygame.mixer.get_init():
         except pygame.error:
             pass
 
-    hit_sounds = load_sound_variations("hit")
+    hit1_sounds = load_sound_variations("hit1")
+    hit3_sounds = load_sound_variations("hit3")
+    all_hit_sounds = hit1_sounds + hit3_sounds
 
     bg_tracks = find_sound_files("komiku")
     if bg_tracks:
@@ -224,7 +226,9 @@ if pygame.mixer.get_init():
 else:
     coin_sound = None
     swish_sound = None
-    hit_sounds = []
+    hit1_sounds = []
+    hit3_sounds = []
+    all_hit_sounds = []
 
 # ---------------------------------------------------------------------------
 # Volume configuration helpers
@@ -243,7 +247,7 @@ def apply_volume():
             coin_sound.set_volume(total_sfx)
         if swish_sound:
             swish_sound.set_volume(total_sfx)
-        for snd in hit_sounds:
+        for snd in all_hit_sounds:
             snd.set_volume(total_sfx)
         pygame.mixer.music.set_volume(total_music)
 
@@ -541,8 +545,8 @@ def run_game():
                 continue
             if check_collision(p[0], p[1], enemy_x, enemy_y, enemy_size, projectile_radius):
                 score += 1
-                if hit_sounds:
-                    random.choice(hit_sounds).play()
+                if hit3_sounds:
+                    random.choice(hit3_sounds).play()
                 enemy_x, enemy_y, enemy_dx, enemy_dy, enemy_dir = spawn_enemy()
                 enemy = Zombie(random.choice(zombie_sheet_paths))
                 enemy.set_direction(enemy_dir)
@@ -561,8 +565,8 @@ def run_game():
                 projectiles.remove(p)
 
         if check_collision(player_x, player_y, enemy_x, enemy_y, enemy_size, player_radius):
-            if hit_sounds:
-                random.choice(hit_sounds).play()
+            if hit1_sounds:
+                random.choice(hit1_sounds).play()
             running = False
 
         if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):

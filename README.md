@@ -9,7 +9,9 @@ Shoot projectiles with the arrow keys (as long as ammo is available). Avoid the 
 Both enemies and coins can enter from any edge of the screen and travel horizontally or vertically. The
 player starts in the center and earns a point for each coin collected. Projectiles
 also award points when they destroy enemies or coins. Ammo pickups occasionally spawn and increase
-your projectile count when collected. If an enemy
+your projectile count when collected. Each level lasts 60 seconds with a
+countdown shown in the center of the screen. When the timer expires the next
+level begins with faster enemies and adjusted pickup rates. If an enemy
 collides with the player an end screen appears allowing you to restart
 with `R` or quit with `Q`.
 

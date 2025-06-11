@@ -322,6 +322,8 @@ enemy_size = int(max(enemy_frame_w, enemy_frame_h) * ZOMBIE_SCALE)
 BASE_ENEMY_SPEED = 3
 coin_size = coin_frame_size
 BASE_COIN_SPEED = 4
+BASE_AMMO_INTERVAL = 4
+BASE_COIN_DELAY = 0.5
 
 # new color for ammo pickup/projectile ui
 AMMO_COLOR = (255, 255, 255)
@@ -488,7 +490,7 @@ def pause_menu():
         clock.tick(60)
 
 
-def run_level(level_num, enemy_speed, coin_speed, enemy_count):
+def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, coin_delay):
     global master_volume, sfx_volume, music_volume, score, lives, next_life_score
     if pygame.mixer.get_init() and not pygame.mixer.music.get_busy():
         start_music()
@@ -518,6 +520,8 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count):
     coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
     coin_anim_index = 0
     coin_anim_timer = 0
+    coin_active = True
+    coin_respawn_timer = 0
 
     ammo_x, ammo_y = None, None
 
@@ -601,27 +605,34 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count):
                 enemy[5].set_direction(enemy[4])
                 enemy[5].rect.topleft = (enemy[0], enemy[1])
                 enemy_spawn_count += 1
-                if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                if enemy_spawn_count % ammo_interval == 0 and ammo_x is None:
                     ammo_x, ammo_y = spawn_ammo()
 
-        coin_x += coin_dx
-        coin_y += coin_dy
-        coin_anim_timer += dt
-        if coin_anim_timer >= 0.1:
-            coin_anim_timer = 0
-            if coin_dx > 0 or coin_dy < 0:
-                coin_anim_index = (coin_anim_index + 1) % len(coin_frames)
-            else:
-                coin_anim_index = (coin_anim_index - 1) % len(coin_frames)
-        if (
-            coin_x < -coin_size
-            or coin_x > WIDTH
-            or coin_y < -coin_size
-            or coin_y > HEIGHT
-        ):
-            coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
-            coin_anim_index = 0
-            coin_anim_timer = 0
+        if coin_active:
+            coin_x += coin_dx
+            coin_y += coin_dy
+            coin_anim_timer += dt
+            if coin_anim_timer >= 0.1:
+                coin_anim_timer = 0
+                if coin_dx > 0 or coin_dy < 0:
+                    coin_anim_index = (coin_anim_index + 1) % len(coin_frames)
+                else:
+                    coin_anim_index = (coin_anim_index - 1) % len(coin_frames)
+            if (
+                coin_x < -coin_size
+                or coin_x > WIDTH
+                or coin_y < -coin_size
+                or coin_y > HEIGHT
+            ):
+                coin_active = False
+                coin_respawn_timer = coin_delay
+        else:
+            coin_respawn_timer -= dt
+            if coin_respawn_timer <= 0:
+                coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
+                coin_anim_index = 0
+                coin_anim_timer = 0
+                coin_active = True
 
         for p in projectiles[:]:
             p[0] += p[2]
@@ -646,19 +657,18 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count):
                     enemy[5].set_direction(enemy[4])
                     enemy[5].rect.topleft = (enemy[0], enemy[1])
                     enemy_spawn_count += 1
-                    if enemy_spawn_count % 4 == 0 and ammo_x is None:
+                    if enemy_spawn_count % ammo_interval == 0 and ammo_x is None:
                         ammo_x, ammo_y = spawn_ammo()
                     hit_any = True
                     break
             if hit_any:
                 projectiles.remove(p)
                 continue
-            if check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
+            if coin_active and check_collision(p[0], p[1], coin_x, coin_y, coin_size, projectile_radius):
                 score += 5
                 play_coin_sound()
-                coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
-                coin_anim_index = 0
-                coin_anim_timer = 0
+                coin_active = False
+                coin_respawn_timer = coin_delay
                 projectiles.remove(p)
 
         for enemy in enemies:
@@ -667,12 +677,11 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count):
                     hit_sound.play()
                 return "dead"
 
-        if check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
+        if coin_active and check_collision(player_x, player_y, coin_x, coin_y, coin_size, player_radius):
             score += 1
             play_coin_sound()
-            coin_x, coin_y, coin_dx, coin_dy = spawn_coin(coin_speed)
-            coin_anim_index = 0
-            coin_anim_timer = 0
+            coin_active = False
+            coin_respawn_timer = coin_delay
 
         if ammo_x is not None and check_collision(
             player_x, player_y,
@@ -695,11 +704,14 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count):
         screen.blit(level_text, (20, 70))
         ammo_text = font.render(f"Shuriken: {ammo}", True, (255, 255, 255))
         screen.blit(ammo_text, (20, 100))
+        timer_text = font.render(f"{int(60 - elapsed)}", True, (255, 255, 255))
+        screen.blit(timer_text, timer_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
 
         screen.blit(current_img, current_img.get_rect(center=(player_x, player_y)))
         for enemy in enemies:
             screen.blit(enemy[5].image, enemy[5].rect)
-        screen.blit(coin_frames[coin_anim_index], (coin_x, coin_y))
+        if coin_active:
+            screen.blit(coin_frames[coin_anim_index], (coin_x, coin_y))
         if ammo_x is not None:
             screen.blit(shuriken_img, shuriken_img.get_rect(center=(ammo_x, ammo_y)))
         for p in projectiles:
@@ -744,13 +756,17 @@ def main():
     global score, lives, next_life_score, current_level
     enemy_speed = BASE_ENEMY_SPEED
     coin_speed = BASE_COIN_SPEED
+    ammo_interval = BASE_AMMO_INTERVAL
+    coin_delay = BASE_COIN_DELAY
     while True:
-        enemy_count = 1 + (current_level - 1) // 3
-        result = run_level(current_level, enemy_speed, coin_speed, enemy_count)
+        enemy_count = 1 + (current_level - 1) // 2
+        result = run_level(current_level, enemy_speed, coin_speed, enemy_count, ammo_interval, coin_delay)
         if result == "complete":
             current_level += 1
             enemy_speed *= 1.05
             coin_speed *= 1.05
+            ammo_interval = max(1, ammo_interval * 0.95)
+            coin_delay *= 1.1
             continue
         else:  # player died
             lives -= 1
@@ -763,6 +779,8 @@ def main():
                 current_level = 1
                 enemy_speed = BASE_ENEMY_SPEED
                 coin_speed = BASE_COIN_SPEED
+                ammo_interval = BASE_AMMO_INTERVAL
+                coin_delay = BASE_COIN_DELAY
                 continue
             else:
                 break

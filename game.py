@@ -5,6 +5,7 @@ import os
 import math
 import wave
 import struct
+import webbrowser
 
 # Initialize pygame
 pygame.init()
@@ -29,6 +30,33 @@ RIGHT_PANEL_WIDTH = SCREEN_WIDTH - GAME_WIDTH - LEFT_PANEL_WIDTH
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Ninja vs Zombies")
+
+# Simple rotating advertisement links
+ads = [
+    {
+        "lines": [
+            "Check out Grumpy Goose Studio!",
+            "youtube.com/@GrumpyGooseStudio",
+        ],
+        "link": "https://youtube.com/@GrumpyGooseStudio",
+    },
+    {
+        "lines": [
+            "Watch our short!",
+            "Latest update",
+        ],
+        "link": "https://youtube.com/shorts/-jrXM0WAVYg?si=ERcLkdPNpOAnzX7O",
+    },
+    {
+        "lines": [
+            "Grab merch:",
+            "redbubble.com/people/GrumpGoose/shop?asc=u",
+        ],
+        "link": "https://redbubble.com/people/GrumpGoose/shop?asc=u",
+    },
+]
+current_ad_index = 0
+ad_timer = 0
 
 
 def ensure_directories():
@@ -455,24 +483,21 @@ def draw_left_panel():
     """Render the advertisement panel on the left side of the screen."""
     panel = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (30, 30, 30), panel)
-    lines = [
-        "Check out Grumpy Goose Studio!",
-        "youtube.com/@GrumpyGooseStudio",
-        "",
-        "Grab merch at:",
-        "redbubble.com/people/GrumpGoose/shop?asc=u",
-    ]
+    pygame.draw.rect(screen, (200, 200, 200), panel, 2)
+    lines = ads[current_ad_index]["lines"]
     y = 40
     for text in lines:
         surf = font.render(text, True, (255, 255, 255))
         screen.blit(surf, (10, y))
         y += 30
+    return panel
 
 
 def draw_shop(dropdown_open):
     """Render the shop panel and return list of option rects."""
     panel = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH, 0, RIGHT_PANEL_WIDTH, HEIGHT)
     pygame.draw.rect(screen, (40, 40, 40), panel)
+    pygame.draw.rect(screen, (200, 200, 200), panel, 2)
 
     title = font.render("Shop", True, (255, 255, 255))
     screen.blit(title, (panel.x + 10, 10))
@@ -500,7 +525,7 @@ def draw_shop(dropdown_open):
     return dd_rect, option_rects
 
 
-def pause_menu():
+def pause_menu(shop_open):
     """Display a simple pause/options menu and adjust audio settings."""
     global master_volume, sfx_volume, music_volume, current_track_index
     selected = 0
@@ -512,10 +537,20 @@ def pause_menu():
     exit_rect.center = (SCREEN_WIDTH // 2, HEIGHT // 2 + 220)
     dropdown_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, HEIGHT // 2 - 240, 300, 40)
     dropdown_open = False
-    option_rects = []
     dragging = None
 
     while True:
+        shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, 30)
+        shop_option_rects = [
+            pygame.Rect(shop_rect.x, shop_rect.bottom + i * 30, shop_rect.width, 30)
+            for i in range(len(BACKGROUND_TILES))
+        ]
+        track_option_rects = []
+        if dropdown_open:
+            track_option_rects = [
+                pygame.Rect(dropdown_rect.x, dropdown_rect.bottom + i * 40, dropdown_rect.width, 40)
+                for i in range(len(bg_track_names))
+            ]
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -524,7 +559,7 @@ def pause_menu():
                 if event.key == pygame.K_SPACE:
                     master_volume, sfx_volume, music_volume = values
                     apply_volume()
-                    return
+                    return shop_open
                 if event.key == pygame.K_UP:
                     selected = (selected - 1) % 3
                 if event.key == pygame.K_DOWN:
@@ -542,10 +577,32 @@ def pause_menu():
                 if exit_rect.collidepoint(event.pos):
                     pygame.quit()
                     sys.exit()
+                ad_rect = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
+                if ad_rect.collidepoint(event.pos):
+                    try:
+                        webbrowser.open(ads[current_ad_index]["link"])
+                    except Exception:
+                        pass
+                if shop_rect.collidepoint(event.pos):
+                    shop_open = not shop_open
+                elif shop_open:
+                    for i, rect in enumerate(shop_option_rects):
+                        if rect.collidepoint(event.pos):
+                            if i not in unlocked_backgrounds:
+                                if score >= 10:
+                                    score -= 10
+                                    unlocked_backgrounds.add(i)
+                                else:
+                                    break
+                            if i in unlocked_backgrounds:
+                                selected_background = i
+                                BACKGROUND_SURFACE = build_background(selected_background)
+                            shop_open = False
+                            break
                 if dropdown_rect.collidepoint(event.pos):
                     dropdown_open = not dropdown_open
                 elif dropdown_open:
-                    for i, rect in enumerate(option_rects):
+                    for i, rect in enumerate(track_option_rects):
                         if rect.collidepoint(event.pos):
                             current_track_index = i
                             try:
@@ -557,7 +614,12 @@ def pause_menu():
                             break
                 else:
                     for i in range(3):
-                        track = pygame.Rect(SCREEN_WIDTH // 2 - track_len // 2, HEIGHT // 2 - 80 + i * 80, track_len, 8)
+                        track = pygame.Rect(
+                            SCREEN_WIDTH // 2 - track_len // 2,
+                            HEIGHT // 2 - 80 + i * 80,
+                            track_len,
+                            8,
+                        )
                         if track.collidepoint(event.pos):
                             selected = i
                             values[i] = int(max(0, min(100, (event.pos[0] - track.x) / track.width * 100)))
@@ -575,6 +637,8 @@ def pause_menu():
                 apply_volume()
 
         screen.fill(BACKGROUND_COLOR)
+        draw_left_panel()
+        draw_shop(shop_open)
         title = font.render("Paused", True, (255, 255, 255))
         screen.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, HEIGHT // 4)))
 
@@ -582,14 +646,14 @@ def pause_menu():
         current_name = "No Tracks" if not bg_tracks else bg_track_names[current_track_index][:20]
         text_surf = font.render(current_name, True, (255, 255, 255))
         screen.blit(text_surf, text_surf.get_rect(center=dropdown_rect.center))
-        option_rects = []
+        track_option_rects = []
         if dropdown_open:
             for i, name in enumerate(bg_track_names):
                 rect = pygame.Rect(dropdown_rect.x, dropdown_rect.bottom + i * 40, dropdown_rect.width, 40)
                 pygame.draw.rect(screen, (60, 60, 60), rect)
                 lbl = font.render(name[:20], True, (255, 255, 255))
                 screen.blit(lbl, lbl.get_rect(center=rect.center))
-                option_rects.append(rect)
+                track_option_rects.append(rect)
 
         for i, (name, val) in enumerate(zip(options, values)):
             label = font.render(name, True, (255, 255, 255))
@@ -616,6 +680,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     global master_volume, sfx_volume, music_volume
     global score, lives, next_life_score
     global selected_background, unlocked_backgrounds, BACKGROUND_SURFACE
+    global current_ad_index, ad_timer
     # Ensure the background surface exists in case an older save lacked it
     if BACKGROUND_SURFACE is None:
         BACKGROUND_SURFACE = build_background(selected_background)
@@ -658,11 +723,16 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
     elapsed = 0
     running = True
     shop_open = False
+    ad_rect = pygame.Rect(0, 0, LEFT_PANEL_WIDTH, HEIGHT)
     while running:
         dt = clock.tick(60) / 1000
         elapsed += dt
         if elapsed >= 60:
             return "complete"
+        ad_timer += dt
+        if ad_timer >= 10:
+            ad_timer = 0
+            current_ad_index = (current_ad_index + 1) % len(ads)
 
         shop_rect = pygame.Rect(LEFT_PANEL_WIDTH + WIDTH + 10, 60, RIGHT_PANEL_WIDTH - 20, 30)
         option_rects = [
@@ -676,7 +746,7 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    pause_menu()
+                    shop_open = pause_menu(shop_open)
                 elif event.key == pygame.K_LEFT and ammo > 0:
                     projectiles.append([player_x, player_y, -projectile_speed, 0, 0])
                     ammo -= 1
@@ -694,7 +764,12 @@ def run_level(level_num, enemy_speed, coin_speed, enemy_count, ammo_interval, co
                     ammo -= 1
                     play_swish_sound()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if shop_rect.collidepoint(event.pos):
+                if ad_rect.collidepoint(event.pos):
+                    try:
+                        webbrowser.open(ads[current_ad_index]["link"])
+                    except Exception:
+                        pass
+                elif shop_rect.collidepoint(event.pos):
                     shop_open = not shop_open
                 elif shop_open:
                     for i, rect in enumerate(option_rects):
